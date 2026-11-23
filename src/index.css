@@ -41,3 +41,20 @@
   outline: 2px solid #1686A8;
   outline-offset: 2px;
 }
+
+/* Hide Netlify injected HUD and badges */
+#nl-badge-frame,
+#nl-hud-frame,
+iframe[title*="Netlify"],
+iframe[title*="Powered by Netlify"],
+iframe[srcdoc*="Powered by Netlify"],
+[data-netlify-site-id] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  clip: rect(0, 0, 0, 0) !important;
+}

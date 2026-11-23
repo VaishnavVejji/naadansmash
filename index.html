@@ -21,6 +21,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      /* Automatically remove Netlify injected badges/frames */
+      (function() {
+        function removeNetlifyBadge() {
+          const ids = ['nl-badge-frame', 'nl-hud-frame'];
+          ids.forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+          });
+          const iframes = document.querySelectorAll('iframe[title*="Netlify"], iframe[title*="Powered by Netlify"], iframe[srcdoc*="Powered by Netlify"]');
+          iframes.forEach(function(f) { f.remove(); });
+        }
+        removeNetlifyBadge();
+        const observer = new MutationObserver(removeNetlifyBadge);
+        if (document.documentElement) {
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+        window.addEventListener('DOMContentLoaded', removeNetlifyBadge);
+        window.addEventListener('load', removeNetlifyBadge);
+      })();
+    </script>
   </head>
   <body class="bg-brand-offwhite text-brand-black antialiased selection:bg-brand-teal selection:text-brand-white">
     <div id="root"></div>
