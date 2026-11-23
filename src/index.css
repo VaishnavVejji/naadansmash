@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #111315;
+    background-color: #F8F8F5;
+    overflow-x: hidden;
+  }
+
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', 'Sora', sans-serif;
+    letter-spacing: -0.025em;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F8F8F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #202326;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1686A8;
+}
+
+/* Smooth Focus Rings */
+:focus-visible {
+  outline: 2px solid #1686A8;
+  outline-offset: 2px;
+}
