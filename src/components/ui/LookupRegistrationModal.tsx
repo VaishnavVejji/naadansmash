@@ -119,12 +119,21 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
       if (isPhone) {
         const cleanPhone = digitsOnly.slice(-10);
         const tickets = await eventsService.getUserTickets(cleanPhone);
-        setUserTickets(tickets);
         if (tickets.length > 0) {
+          setUserTickets(tickets);
           setResult(tickets[0]);
           localStorage.setItem('naadansmash_last_phone', cleanPhone);
         } else {
-          setResult(null);
+          // Fallback to lookupRegistration with clean phone
+          const res = await eventsService.lookupRegistration(cleanPhone);
+          if (res.found && res.registration) {
+            setUserTickets([res.registration]);
+            setResult(res.registration);
+            localStorage.setItem('naadansmash_last_phone', cleanPhone);
+          } else {
+            setUserTickets([]);
+            setResult(null);
+          }
         }
       } else {
         // Search by registration number (NS-001 or raw)
@@ -135,6 +144,16 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
           if (res.registration.phone) {
             const p = res.registration.phone.replace(/\D/g, '').slice(-10);
             if (p) localStorage.setItem('naadansmash_last_phone', p);
+          }
+        } else if (digitsOnly.length >= 10) {
+          // Fallback: If input had 10 digits, search by phone
+          const tickets = await eventsService.getUserTickets(digitsOnly.slice(-10));
+          if (tickets.length > 0) {
+            setUserTickets(tickets);
+            setResult(tickets[0]);
+          } else {
+            setUserTickets([]);
+            setResult(null);
           }
         } else {
           setUserTickets([]);

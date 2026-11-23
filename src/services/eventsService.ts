@@ -1160,6 +1160,27 @@ export const eventsService = {
           }
         }
       }
+
+      // If specific query returned 0, fetch all cloud tickets as a reliable fallback
+      if (ticketsMap.size === 0) {
+        const allRes = await fetch('/api/tickets');
+        if (allRes.ok) {
+          const allData = await allRes.json();
+          if (allData.tickets && Array.isArray(allData.tickets)) {
+            for (const t of allData.tickets) {
+              const itemPhone = (t.phone || '').replace(/\D/g, '').slice(-10);
+              const itemReg = formatDisplayTicketNumber(t.registration_number).toUpperCase();
+              if ((cleanPhone && (itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone))) ||
+                  itemReg === cleanReg) {
+                ticketsMap.set(itemReg, {
+                  ...t,
+                  registration_number: itemReg,
+                });
+              }
+            }
+          }
+        }
+      }
     } catch (e) {
       console.warn('Could not reach cloud tickets API, using local and database fallback:', e);
     }

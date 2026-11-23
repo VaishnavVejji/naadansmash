@@ -164,7 +164,26 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
       if (res.success && res.registrationNumber) {
         const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-        eventsService.recordPlayerTicket(res.registrationNumber, cleanPhone, event.id);
+        await eventsService.recordPlayerTicket(res.registrationNumber, cleanPhone, event.id, {
+          registration_number: res.registrationNumber,
+          phone: cleanPhone,
+          event_id: event.id,
+          full_name: fullName.trim(),
+          email: email.trim() || undefined,
+          skill_level: skillLevel,
+          payment_status: 'pending',
+          attendance_status: 'registered',
+          registration_status: 'payment_submitted',
+          utr_reference: utrReference.trim() || undefined,
+          payment_screenshot_path: screenshotData || undefined,
+          event_title: event.title,
+          event_date: event.event_date,
+          start_time: event.start_time,
+          end_time: event.end_time,
+          venue: event.venue,
+          registration_fee: event.registration_fee,
+          created_at: new Date().toISOString(),
+        });
         localStorage.setItem('naadansmash_last_phone', cleanPhone);
         setSuccessData({
           registrationNumber: res.registrationNumber,

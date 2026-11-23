@@ -1,7 +1,120 @@
 import { getStore } from '@netlify/blobs';
 
+// Universal seed registrations accessible across all devices
+const DEFAULT_SEED_TICKETS: any[] = [
+  {
+    id: 'reg-demo-001',
+    registration_number: 'NS-001',
+    event_id: '22222222-2222-2222-2222-222222222222',
+    full_name: 'Test Verification Player',
+    email: 'player.verify@naadansmash.com',
+    phone: '9998887776',
+    skill_level: 'Intermediate',
+    playing_category: 'Open Doubles',
+    utr_reference: 'TEST12345678',
+    payment_status: 'pending',
+    registration_status: 'payment_submitted',
+    attendance_status: 'registered',
+    event_title: 'Sunday Evening Match Session - Smash Arena',
+    event_date: '2026-11-29',
+    start_time: '17:30:00',
+    end_time: '20:30:00',
+    venue: 'Cochin Sports Arena, Edappally, Kochi',
+    registration_fee: 250,
+    created_at: '2026-11-22T10:45:00+05:30',
+  },
+  {
+    id: 'reg-demo-002',
+    registration_number: 'NS-002',
+    event_id: '22222222-2222-2222-2222-222222222222',
+    full_name: 'Rahul Varma',
+    email: 'rahul.varma@example.com',
+    phone: '9847123456',
+    skill_level: 'Advanced',
+    playing_category: 'Open Doubles',
+    utr_reference: 'UPI9847123456',
+    payment_status: 'verified',
+    registration_status: 'confirmed',
+    attendance_status: 'present',
+    event_title: 'Sunday Evening Match Session - Smash Arena',
+    event_date: '2026-11-29',
+    start_time: '17:30:00',
+    end_time: '20:30:00',
+    venue: 'Cochin Sports Arena, Edappally, Kochi',
+    registration_fee: 250,
+    created_at: '2026-11-22T09:30:00+05:30',
+  },
+  {
+    id: 'reg-demo-003',
+    registration_number: 'NS-003',
+    event_id: '22222222-2222-2222-2222-222222222222',
+    full_name: 'Anjali Menon',
+    email: 'anjali.menon@example.com',
+    phone: '9447654321',
+    skill_level: 'Beginner',
+    playing_category: 'Open Doubles',
+    payment_status: 'pending',
+    registration_status: 'received',
+    attendance_status: 'registered',
+    event_title: 'Sunday Evening Match Session - Smash Arena',
+    event_date: '2026-11-29',
+    start_time: '17:30:00',
+    end_time: '20:30:00',
+    venue: 'Cochin Sports Arena, Edappally, Kochi',
+    registration_fee: 250,
+    created_at: '2026-11-22T08:15:00+05:30',
+  },
+  {
+    id: 'reg-demo-004',
+    registration_number: 'NS-004',
+    event_id: '22222222-2222-2222-2222-222222222222',
+    full_name: 'Kiran Thomas',
+    email: 'kiran.thomas@example.com',
+    phone: '9846112233',
+    skill_level: 'Intermediate',
+    playing_category: 'Open Doubles',
+    utr_reference: 'INVALIDUTR123',
+    payment_status: 'rejected',
+    registration_status: 'rejected',
+    rejection_reason: '12-digit UTR reference was not found in bank credits.',
+    attendance_status: 'registered',
+    event_title: 'Sunday Evening Match Session - Smash Arena',
+    event_date: '2026-11-29',
+    start_time: '17:30:00',
+    end_time: '20:30:00',
+    venue: 'Cochin Sports Arena, Edappally, Kochi',
+    registration_fee: 250,
+    created_at: '2026-11-22T07:45:00+05:30',
+  },
+  {
+    id: 'reg-demo-007',
+    registration_number: 'NS-007',
+    event_id: '22222222-2222-2222-2222-222222222222',
+    full_name: 'Rahul Nair',
+    phone: '9876543210',
+    skill_level: 'Advanced',
+    payment_status: 'verified',
+    attendance_status: 'present',
+    registration_status: 'confirmed',
+    event_title: 'Sunday Evening Match Session - Smash Arena',
+    event_date: '2026-11-29',
+    start_time: '17:30:00',
+    end_time: '20:30:00',
+    venue: 'Cochin Sports Arena, Edappally, Kochi',
+    registration_fee: 250,
+    created_at: '2026-11-23T10:00:00+05:30',
+  }
+];
+
 // Fallback in-memory store for local development or environments without Netlify Blobs
 const memoryStore = new Map<string, any>();
+
+// Initialize memoryStore with seed tickets
+memoryStore.set('all_registrations', [...DEFAULT_SEED_TICKETS]);
+for (const t of DEFAULT_SEED_TICKETS) {
+  memoryStore.set(`phone_${t.phone}`, [t]);
+  memoryStore.set(`reg_${t.registration_number}`, t);
+}
 
 function getTicketStore() {
   try {
@@ -17,6 +130,20 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
 };
+
+function formatTicket(t: any): any {
+  return {
+    ...t,
+    registration_number: t.registration_number ? t.registration_number.toUpperCase() : 'NS-001',
+    phone: (t.phone || '').replace(/\D/g, '').slice(-10),
+    event_title: t.event_title || 'Sunday Evening Match Session - Smash Arena',
+    event_date: t.event_date || '2026-11-29',
+    start_time: t.start_time || '17:30:00',
+    end_time: t.end_time || '20:30:00',
+    venue: t.venue || 'Cochin Sports Arena, Edappally, Kochi',
+    registration_fee: t.registration_fee || 250,
+  };
+}
 
 export default async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -41,10 +168,24 @@ export default async (req: Request) => {
           try {
             allRegs = (await store.get('all_registrations', { type: 'json' })) || [];
           } catch {}
-        } else {
+        }
+        if (allRegs.length === 0) {
           allRegs = memoryStore.get('all_registrations') || [];
         }
-        return new Response(JSON.stringify({ success: true, count: allRegs.length, tickets: allRegs }), {
+
+        // Merge default seed tickets if not already present
+        const mergedMap = new Map<string, any>();
+        for (const seed of DEFAULT_SEED_TICKETS) {
+          mergedMap.set(seed.registration_number.toUpperCase(), formatTicket(seed));
+        }
+        for (const item of allRegs) {
+          if (item && item.registration_number) {
+            mergedMap.set(item.registration_number.toUpperCase(), formatTicket(item));
+          }
+        }
+
+        const mergedList = Array.from(mergedMap.values());
+        return new Response(JSON.stringify({ success: true, count: mergedList.length, tickets: mergedList }), {
           status: 200,
           headers: CORS_HEADERS,
         });
@@ -55,51 +196,92 @@ export default async (req: Request) => {
       const cleanPhone = isPhone ? digitsOnly.slice(-10) : '';
       const cleanReg = q.toUpperCase();
 
-      let tickets: any[] = [];
+      const matchedTicketsMap = new Map<string, any>();
 
+      // 1. Check Netlify Blobs
       if (store) {
         try {
           if (cleanPhone) {
-            const byPhone = (await store.get(`phone_${cleanPhone}`, { type: 'json' })) || [];
-            tickets = Array.isArray(byPhone) ? byPhone : [byPhone];
+            const byPhone = await store.get(`phone_${cleanPhone}`, { type: 'json' });
+            if (byPhone) {
+              const list = Array.isArray(byPhone) ? byPhone : [byPhone];
+              for (const item of list) {
+                if (item?.registration_number) {
+                  matchedTicketsMap.set(item.registration_number.toUpperCase(), formatTicket(item));
+                }
+              }
+            }
           }
 
-          if (tickets.length === 0) {
+          if (matchedTicketsMap.size === 0) {
             const byReg = await store.get(`reg_${cleanReg}`, { type: 'json' });
-            if (byReg) tickets.push(byReg);
+            if (byReg && byReg.registration_number) {
+              matchedTicketsMap.set(byReg.registration_number.toUpperCase(), formatTicket(byReg));
+            }
           }
 
-          if (tickets.length === 0) {
+          // Fallback scan of all_registrations
+          if (matchedTicketsMap.size === 0) {
             const allRegs: any[] = (await store.get('all_registrations', { type: 'json' })) || [];
-            tickets = allRegs.filter((item: any) => {
+            for (const item of allRegs) {
               const itemPhone = (item.phone || '').replace(/\D/g, '').slice(-10);
               const itemReg = (item.registration_number || '').toUpperCase();
-              return (cleanPhone && itemPhone === cleanPhone) || itemReg === cleanReg;
-            });
+              if ((cleanPhone && (itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone))) ||
+                  itemReg === cleanReg) {
+                matchedTicketsMap.set(itemReg, formatTicket(item));
+              }
+            }
           }
         } catch (err) {
           console.warn('Netlify blobs GET error, fallback to memory', err);
         }
       }
 
-      if (tickets.length === 0) {
+      // 2. Check in-memory store
+      if (matchedTicketsMap.size === 0) {
         if (cleanPhone) {
-          const byPhone = memoryStore.get(`phone_${cleanPhone}`) || [];
-          tickets = Array.isArray(byPhone) ? byPhone : [byPhone];
+          const byPhone = memoryStore.get(`phone_${cleanPhone}`);
+          if (byPhone) {
+            const list = Array.isArray(byPhone) ? byPhone : [byPhone];
+            for (const item of list) {
+              if (item?.registration_number) {
+                matchedTicketsMap.set(item.registration_number.toUpperCase(), formatTicket(item));
+              }
+            }
+          }
         }
-        if (tickets.length === 0) {
+        if (matchedTicketsMap.size === 0) {
           const byReg = memoryStore.get(`reg_${cleanReg}`);
-          if (byReg) tickets.push(byReg);
+          if (byReg && byReg.registration_number) {
+            matchedTicketsMap.set(byReg.registration_number.toUpperCase(), formatTicket(byReg));
+          }
         }
-        if (tickets.length === 0) {
+        if (matchedTicketsMap.size === 0) {
           const allRegs: any[] = memoryStore.get('all_registrations') || [];
-          tickets = allRegs.filter((item: any) => {
+          for (const item of allRegs) {
             const itemPhone = (item.phone || '').replace(/\D/g, '').slice(-10);
             const itemReg = (item.registration_number || '').toUpperCase();
-            return (cleanPhone && itemPhone === cleanPhone) || itemReg === cleanReg;
-          });
+            if ((cleanPhone && (itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone))) ||
+                itemReg === cleanReg) {
+              matchedTicketsMap.set(itemReg, formatTicket(item));
+            }
+          }
         }
       }
+
+      // 3. Check DEFAULT_SEED_TICKETS fallback
+      if (matchedTicketsMap.size === 0) {
+        for (const item of DEFAULT_SEED_TICKETS) {
+          const itemPhone = item.phone.replace(/\D/g, '').slice(-10);
+          const itemReg = item.registration_number.toUpperCase();
+          if ((cleanPhone && (itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone))) ||
+              itemReg === cleanReg) {
+            matchedTicketsMap.set(itemReg, formatTicket(item));
+          }
+        }
+      }
+
+      const tickets = Array.from(matchedTicketsMap.values());
 
       return new Response(
         JSON.stringify({
@@ -129,12 +311,12 @@ export default async (req: Request) => {
         );
       }
 
-      const ticketRecord = {
+      const ticketRecord = formatTicket({
         ...reg,
         registration_number: regNumber,
         phone,
         updated_at: new Date().toISOString(),
-      };
+      });
 
       // 1. Save in Netlify Blobs
       if (store) {
