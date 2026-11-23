@@ -8,7 +8,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'https://naadansmash.netlify.app',
+        target: 'https://naadansmash.vercel.app',
         changeOrigin: true,
         secure: true,
       },

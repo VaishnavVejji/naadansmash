@@ -1,9 +1,11 @@
 async function testAllPhones() {
+  const baseUrl = process.env.TEST_BASE_URL || 'https://naadansmash.vercel.app';
   const dynamicPhone = '888' + Math.floor(1000000 + Math.random() * 9000000);
   const dynamicReg = 'NS-888';
+  console.log('Testing on base URL:', baseUrl);
   console.log('1. Registering dynamic ticket for phone:', dynamicPhone);
   
-  const postRes = await fetch('https://naadansmash.netlify.app/api/tickets', {
+  const postRes = await fetch(`${baseUrl}/api/tickets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -35,7 +37,7 @@ async function testAllPhones() {
   for (const item of testCases) {
     const digitsOnly = item.p.replace(/\D/g, '');
     const cleanPhone = digitsOnly.slice(-10);
-    const res = await fetch('https://naadansmash.netlify.app/api/tickets?q=' + encodeURIComponent(cleanPhone));
+    const res = await fetch(`${baseUrl}/api/tickets?q=` + encodeURIComponent(cleanPhone));
     const data = await res.json();
     const hasTicket = data.found && data.tickets && data.tickets.some(t => t.registration_number === item.expected);
     if (hasTicket) {

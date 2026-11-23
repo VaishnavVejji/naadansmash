@@ -1,7 +1,7 @@
 # NAADANSMASH — Kochi Badminton Community Platform
 
 > **COME PLAY. CONNECT. REPEAT.**  
-> Kochi, Kerala, India • [@naadansmash.co](https://instagram.com/naadansmash.co) • [+91 83048 83872](https://wa.me/918304883872)
+> **Live Website:** [naadansmash.vercel.app](https://naadansmash.vercel.app/) • Kochi, Kerala, India • [@naadansmash.co](https://instagram.com/naadansmash.co) • [+91 83048 83872](https://wa.me/918304883872)
 
 NAADANSMASH is a production-ready, full-stack web application designed for Kochi's grassroots badminton meetup community. Built for social weekend game sessions (not coaching classes) where players gather to play, connect, and rally, with organizer Sivaram (an experienced badminton coach) organizing the courts and balanced match rotations.
 
