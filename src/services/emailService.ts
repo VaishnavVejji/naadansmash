@@ -320,7 +320,7 @@ Organiser WhatsApp: +91 83048 83872
       <div class="checklist">
         <div class="checklist-title">🎒 What to Bring</div>
         <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #613400; line-height: 1.6;">
-          <li>Comfortable sports shoes</li>
+          <li>Non-marking badminton shoes</li>
           <li>Your badminton racquet (or ask organiser for a loaner)</li>
           <li>Personal water bottle</li>
           <li>Dry-fit sports apparel</li>
@@ -356,7 +356,7 @@ Session Details:
 - Venue: ${info.venue}
 - Status: Confirmed & Paid
 
-What to bring: Sports shoes, racquet (or loaner), water bottle, dry-fit sportswear.
+What to bring: Non-marking shoes, racquet (or loaner), water bottle, dry-fit sportswear.
 Organized match play and post-match chai are included.
 
 Organiser WhatsApp: +91 83048 83872

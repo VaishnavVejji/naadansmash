@@ -10,8 +10,8 @@ export const Community: React.FC<CommunityProps> = ({ onJoinClick }) => {
   const items = [
     {
       number: '01',
-      title: 'SPORTS SHOES',
-      desc: 'Comfortable athletic sneakers or sports footwear for good court grip and quick footwork.',
+      title: 'NON-MARKING SHOES',
+      desc: 'Indoor court non-marking badminton shoes for court safety, superior grip, and quick footwork.',
       icon: (
         <div className="text-4xl sm:text-5xl my-2 filter drop-shadow-sm select-none transform transition-transform group-hover:scale-110 duration-300">
           👟

@@ -406,8 +406,8 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                       <span className="text-[10px] text-brand-muted">Loaners available on request</span>
                     </div>
                     <div className="p-2 rounded-xl bg-brand-offwhite">
-                      <span className="font-bold block">👟 Sports Shoes</span>
-                      <span className="text-[10px] text-brand-muted">Good court grip required</span>
+                      <span className="font-bold block">👟 Non-Marking Shoes</span>
+                      <span className="text-[10px] text-brand-muted">Indoor court shoes required</span>
                     </div>
                     <div className="p-2 rounded-xl bg-brand-offwhite">
                       <span className="font-bold block">🥤 Water Bottle</span>

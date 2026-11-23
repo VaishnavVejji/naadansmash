@@ -16,7 +16,7 @@ NAADANSMASH is a production-ready, full-stack web application designed for Kochi
 - **4 Distinct Communication & Notification States:**
   - **Registration Received:** Confirms roster hold, displays unique registration number (`NS-YYMM-XXXXXX`), and prompts UPI payment.
   - **Payment Submitted:** Displays under-review note and submitted 12-digit UTR reference.
-  - **Payment Verified:** `"YOU'RE IN!"` digital court pass with match timings and game-day essentials checklist (Racket, sports shoes, water bottle, dry-fit sportswear).
+  - **Payment Verified:** `"YOU'RE IN!"` digital court pass with match timings and game-day essentials checklist (Racket, non-marking shoes, water bottle, dry-fit sportswear).
   - **Payment Rejected:** Prominently displays the administrator's rejection reason, direct WhatsApp appeal button, and an inline form to re-submit corrected payment references.
 - **Secure Participant Ticket Lookup:** Strict 1-to-1 lookup requiring Registration Number + sanitized WhatsApp Phone Number. Enforces Row Level Security (RLS) to prevent unauthorized enumeration.
 - **Direct WhatsApp Messaging:** Prefilled message deep-links for registration enquiries, payment verification, event info, and racket loaner requests to official organiser Sivaram (`+91 83048 83872`).
