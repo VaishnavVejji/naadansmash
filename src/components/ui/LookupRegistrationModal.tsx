@@ -443,11 +443,21 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
 
                   <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div className="shrink-0 p-2.5 bg-white rounded-2xl border border-black/[0.08] shadow-xs flex flex-col items-center">
-                      <QRCodeSVG
-                        value={`upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${result.registration_fee || 250}&cu=INR`}
-                        size={100}
-                        level="M"
-                      />
+                      <div className="w-24 h-24 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
+                        {paymentSettings.qr_image_path ? (
+                          <img
+                            src={paymentSettings.qr_image_path}
+                            alt="Official UPI QR Code"
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <QRCodeSVG
+                            value={`upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${result.registration_fee || 250}&cu=INR`}
+                            size={96}
+                            level="M"
+                          />
+                        )}
+                      </div>
                       <span className="text-[9px] font-mono font-bold tracking-wider text-brand-muted uppercase mt-1.5">
                         Scan with Any UPI App
                       </span>

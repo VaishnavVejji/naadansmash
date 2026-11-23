@@ -57,7 +57,7 @@ const UPCOMING_DEFAULT_EVENT: DatabaseEvent = {
 const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   id: '00000000-0000-0000-0000-000000000001',
   upi_id: 'naadansmash@upi',
-  qr_image_path: '/images/naadansmash-logo.png',
+  qr_image_path: '/images/qr.jpeg',
   account_display_name: 'NAADANSMASH Kochi Sports Club',
   payment_instructions: 'Transfer ₹250 via GPay, PhonePe, or Paytm to naadansmash@upi. Enter the 12-digit UTR reference number upon registration to expedite court check-in.',
 };
@@ -316,7 +316,7 @@ export const eventsService = {
           return {
             id: data.id,
             upi_id: data.upi_id,
-            qr_image_path: data.qr_image_path,
+            qr_image_path: data.qr_image_path && data.qr_image_path !== '/images/naadansmash-logo.png' ? data.qr_image_path : '/images/qr.jpeg',
             account_display_name: data.account_display_name,
             payment_instructions: data.payment_instructions,
           };
@@ -328,7 +328,13 @@ export const eventsService = {
 
     try {
       const stored = localStorage.getItem(STORAGE_KEY_PAYMENT);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (!parsed.qr_image_path || parsed.qr_image_path === '/images/naadansmash-logo.png') {
+          parsed.qr_image_path = '/images/qr.jpeg';
+        }
+        return parsed;
+      }
     } catch {}
 
     return DEFAULT_PAYMENT_SETTINGS;

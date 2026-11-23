@@ -386,13 +386,21 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
                   <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div className="shrink-0 p-3 bg-white rounded-2xl border border-black/[0.08] shadow-xs flex flex-col items-center">
-                      <div className="w-28 h-28 flex items-center justify-center p-1 bg-white">
-                        <QRCodeSVG
-                          value={upiPaymentUri || `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${event.registration_fee}&cu=INR`}
-                          size={112}
-                          level="M"
-                          className="w-full h-full"
-                        />
+                      <div className="w-28 h-28 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
+                        {paymentSettings.qr_image_path ? (
+                          <img
+                            src={paymentSettings.qr_image_path}
+                            alt="Official UPI QR Code"
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <QRCodeSVG
+                            value={upiPaymentUri || `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${event.registration_fee}&cu=INR`}
+                            size={112}
+                            level="M"
+                            className="w-full h-full"
+                          />
+                        )}
                       </div>
                       <span className="text-[9px] font-mono font-bold tracking-wider text-brand-charcoal/70 uppercase mt-2">
                         Scan with Any UPI App
@@ -687,13 +695,21 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                       {/* Interactive Organiser QR Code */}
                       <div className="shrink-0 p-3 bg-white rounded-2xl border border-black/[0.08] shadow-xs flex flex-col items-center">
-                        <div className="w-28 h-28 flex items-center justify-center p-1 bg-white">
-                          <QRCodeSVG
-                            value={upiPaymentUri || `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${event.registration_fee}&cu=INR`}
-                            size={112}
-                            level="M"
-                            className="w-full h-full"
-                          />
+                        <div className="w-28 h-28 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
+                          {paymentSettings.qr_image_path ? (
+                            <img
+                              src={paymentSettings.qr_image_path}
+                              alt="Official UPI QR Code"
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <QRCodeSVG
+                              value={upiPaymentUri || `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${event.registration_fee}&cu=INR`}
+                              size={112}
+                              level="M"
+                              className="w-full h-full"
+                            />
+                          )}
                         </div>
                         <span className="text-[9px] font-mono font-bold tracking-wider text-brand-charcoal/70 uppercase mt-2">
                           Scan with Any UPI App

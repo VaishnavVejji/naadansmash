@@ -1138,6 +1138,20 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                         />
                       </div>
                     </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-black/[0.08]">
+                      <div className="w-14 h-14 rounded-lg overflow-hidden border border-black/[0.08] shrink-0 bg-brand-offwhite flex items-center justify-center p-0.5">
+                        <img
+                          src="/images/qr.jpeg"
+                          alt="Official UPI QR Code"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="text-xs">
+                        <div className="font-mono font-bold text-brand-black">Official QR Code Photo Active</div>
+                        <div className="text-brand-muted text-[11px]">Displayed to participants across registration & ticket lookup</div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="pt-3 flex items-center justify-end gap-3 border-t border-black/[0.08]">
