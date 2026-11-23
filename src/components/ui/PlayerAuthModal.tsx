@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Smartphone, Lock, AlertCircle, CheckCircle2, RotateCw, ArrowLeft, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Smartphone, Lock, AlertCircle, CheckCircle2, RotateCw, ArrowLeft, MessageCircle, ExternalLink } from 'lucide-react';
 import { eventsService } from '../../services/eventsService';
 
 interface PlayerAuthModalProps {
@@ -23,7 +23,18 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [activeTestOtp, setActiveTestOtp] = useState<string | null>(null);
+  const [whatsAppDeliveryUrl, setWhatsAppDeliveryUrl] = useState<string>('');
+  const [smsDeliveryUrl, setSmsDeliveryUrl] = useState<string>('');
+  const [deliveredViaSms, setDeliveredViaSms] = useState<boolean>(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   if (!isOpen) return null;
 
@@ -40,15 +51,16 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
       if (res.success) {
         setOtpSent(true);
         setSuccessMsg(res.message);
-        if (res.testOtp) {
-          setActiveTestOtp(res.testOtp);
-        }
+        if (res.whatsAppUrl) setWhatsAppDeliveryUrl(res.whatsAppUrl);
+        if (res.smsUrl) setSmsDeliveryUrl(res.smsUrl);
+        if (res.deliveredViaSms) setDeliveredViaSms(true);
+        setResendCooldown(30);
       } else {
         setErrorMsg(res.message);
       }
     } catch {
       setLoading(false);
-      setErrorMsg('Failed to send OTP. Please try again.');
+      setErrorMsg('Failed to dispatch OTP. Please check your number and try again.');
     }
   };
 
@@ -65,14 +77,13 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
         onSuccess(res.session);
         setOtpCode('');
         setOtpSent(false);
-        setActiveTestOtp(null);
         onClose();
       } else {
         setErrorMsg(res.message);
       }
     } catch {
       setLoading(false);
-      setErrorMsg('Verification failed. Please check your code.');
+      setErrorMsg('Verification failed. Please check the 6-digit code received on your phone.');
     }
   };
 
@@ -81,7 +92,7 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
     setOtpCode('');
     setErrorMsg('');
     setSuccessMsg('');
-    setActiveTestOtp(null);
+    setResendCooldown(0);
   };
 
   return (
@@ -149,7 +160,7 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
                   />
                 </div>
                 <p className="text-[11px] text-brand-muted mt-1.5 font-mono">
-                  We'll send a 6-digit verification code to confirm your number.
+                  Your 6-digit verification code will be dispatched to this mobile phone number.
                 </p>
               </div>
 
@@ -159,16 +170,16 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
                 className="w-full py-3.5 px-6 rounded-full bg-brand-teal hover:bg-[#126f8c] disabled:bg-black/20 text-white font-heading font-semibold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 <Smartphone className="w-4 h-4" />
-                <span>{loading ? 'Sending Code...' : 'Send Login OTP'}</span>
+                <span>{loading ? 'Sending Code...' : 'Send OTP to Phone'}</span>
               </button>
             </form>
           ) : (
-            /* Step 2: 6-digit OTP input */
+            /* Step 2: OTP verification on mobile */
             <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal">
-                    Enter 6-Digit OTP
+                    Enter 6-Digit Code
                   </label>
                   <button
                     type="button"
@@ -180,10 +191,48 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
                   </button>
                 </div>
 
-                <div className="text-xs font-mono text-brand-muted mb-2">
-                  Code sent to <strong className="text-brand-black">+91 {phoneNumber}</strong>
+                {/* Delivery Notice Card */}
+                <div className="p-3.5 rounded-2xl bg-brand-offwhite border border-black/[0.08] mb-3">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-brand-muted">Target Phone:</span>
+                    <strong className="text-brand-black text-sm">+91 {phoneNumber}</strong>
+                  </div>
+                  <div className="text-[11px] text-brand-charcoal/70 mt-1">
+                    {deliveredViaSms 
+                      ? '✓ Dispatched via SMS gateway to your mobile carrier.'
+                      : '✓ Dispatched to your device. Check your messages or receive directly via WhatsApp below:'}
+                  </div>
                 </div>
 
+                {/* Direct Phone Delivery Options */}
+                {whatsAppDeliveryUrl && (
+                  <div className="mb-3 space-y-2">
+                    <a
+                      href={whatsAppDeliveryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 px-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-heading font-semibold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all"
+                      title="Receive code directly on WhatsApp on this phone"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Tap to Receive Code on WhatsApp</span>
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-70" />
+                    </a>
+
+                    {smsDeliveryUrl && (
+                      <a
+                        href={smsDeliveryUrl}
+                        className="w-full py-2 px-3 rounded-xl bg-black/[0.04] hover:bg-black/[0.08] text-brand-charcoal text-[11px] font-mono font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        title="Open device SMS inbox"
+                      >
+                        <Smartphone className="w-3.5 h-3.5 text-brand-teal" />
+                        <span>Open Native SMS App</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* 6-Digit Code Input */}
                 <input
                   type="text"
                   maxLength={6}
@@ -191,27 +240,10 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                   required
                   placeholder="••••••"
-                  className="w-full px-4 py-3.5 rounded-xl border border-black/[0.12] bg-white text-center text-xl font-mono font-bold tracking-[0.4em] text-brand-black outline-none focus:border-brand-teal shadow-xs"
+                  className="w-full px-4 py-3.5 rounded-xl border border-black/[0.12] bg-white text-center text-2xl font-mono font-bold tracking-[0.4em] text-brand-black outline-none focus:border-brand-teal shadow-xs"
                   autoFocus
                 />
               </div>
-
-              {/* Development / Quick Access Auto-Fill Badge */}
-              {activeTestOtp && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-mono flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-emerald-900">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Verification Code: <strong className="text-emerald-950 font-bold">{activeTestOtp}</strong></span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setOtpCode(activeTestOtp)}
-                    className="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] uppercase font-bold hover:bg-emerald-800 transition-colors"
-                  >
-                    Auto-Fill
-                  </button>
-                </div>
-              )}
 
               <button
                 type="submit"
@@ -219,28 +251,29 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
                 className="w-full py-3.5 px-6 rounded-full bg-brand-teal hover:bg-[#126f8c] disabled:bg-black/20 text-white font-heading font-semibold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 <Lock className="w-4 h-4" />
-                <span>{loading ? 'Verifying...' : 'Verify OTP & Continue'}</span>
+                <span>{loading ? 'Verifying...' : 'Verify Code & Continue'}</span>
               </button>
 
               <div className="flex items-center justify-between text-xs font-mono pt-1">
                 <button
                   type="button"
                   onClick={() => handleSendOtp()}
-                  disabled={loading}
-                  className="text-brand-charcoal hover:text-brand-black flex items-center gap-1 hover:underline"
+                  disabled={loading || resendCooldown > 0}
+                  className="text-brand-charcoal hover:text-brand-black flex items-center gap-1 disabled:opacity-40"
                 >
                   <RotateCw className="w-3 h-3" />
-                  <span>Resend OTP</span>
+                  <span>
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                  </span>
                 </button>
 
                 <a
-                  href={`https://wa.me/91${phoneNumber}?text=NAADANSMASH%20Login%20Verification%20Code:%20${activeTestOtp || '123456'}`}
+                  href={`https://wa.me/919778148482?text=${encodeURIComponent(`Hi NAADANSMASH! I need help verifying my phone number: +91 ${phoneNumber}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 hover:underline"
+                  className="text-brand-muted hover:text-brand-teal flex items-center gap-1"
                 >
-                  <MessageCircle className="w-3 h-3 text-emerald-600" />
-                  <span>Send via WhatsApp</span>
+                  <span>Help / Support</span>
                 </a>
               </div>
             </form>

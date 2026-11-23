@@ -1,6 +1,7 @@
 import { DatabaseEvent, RegistrationPayload, PaymentSettings, ParticipantRegistrationStatus } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { emailService, EmailSendResult } from './emailService';
+import { smsService } from './smsService';
 
 // Seed events matching the new PostgreSQL schema
 const HISTORICAL_EVENT_1: DatabaseEvent = {
@@ -727,6 +728,9 @@ export const eventsService = {
     success: boolean;
     message: string;
     formattedPhone?: string;
+    whatsAppUrl?: string;
+    smsUrl?: string;
+    deliveredViaSms?: boolean;
     testOtp?: string;
   }> {
     const rawDigits = phoneNumber.replace(/\D/g, '');
@@ -758,6 +762,9 @@ export const eventsService = {
     const secureCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = Date.now() + 10 * 60 * 1000;
 
+    // Dispatch cellular SMS if provider configured
+    const smsResult = await smsService.sendSmsOtp(cleanPhone, secureCode);
+
     const payload = {
       phone: cleanPhone,
       fullPhone,
@@ -768,12 +775,18 @@ export const eventsService = {
       sessionStorage.setItem('naadansmash_pending_player_otp', JSON.stringify(payload));
     } catch {}
 
+    const whatsAppUrl = smsService.getWhatsAppDeliveryUrl(cleanPhone, secureCode);
+    const smsUrl = smsService.getNativeSmsUrl(cleanPhone, secureCode);
+
     return {
       success: true,
-      message: supabaseSent
-        ? `OTP sent to ${fullPhone} via SMS.`
-        : `6-digit verification code ready for ${fullPhone}.`,
+      message: (supabaseSent || smsResult.success)
+        ? `SMS OTP sent to ${fullPhone}. Please check your phone messages.`
+        : `Verification code ready for ${fullPhone}.`,
       formattedPhone: fullPhone,
+      whatsAppUrl,
+      smsUrl,
+      deliveredViaSms: supabaseSent || smsResult.success,
       testOtp: secureCode,
     };
   },

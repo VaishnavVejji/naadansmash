@@ -32,6 +32,7 @@ import {
 import { DatabaseEvent, PaymentStatus, AttendanceStatus } from '../../types';
 import { eventsService } from '../../services/eventsService';
 import { emailService } from '../../services/emailService';
+import { smsService } from '../../services/smsService';
 import { 
   getOrganiserWhatsAppNumber, 
   getFormattedOrganiserWhatsApp, 
@@ -118,6 +119,14 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; id?: string } | null>(null);
 
+  // SMS Gateway Settings state
+  const [smsProvider, setSmsProvider] = useState<'fast2sms' | '2factor' | 'twilio' | 'none'>('fast2sms');
+  const [smsApiKey, setSmsApiKey] = useState('');
+  const [showSmsKey, setShowSmsKey] = useState(false);
+  const [testSmsPhone, setTestSmsPhone] = useState('');
+  const [sendingTestSms, setSendingTestSms] = useState(false);
+  const [testSmsResult, setTestSmsResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const populateEventForm = useCallback((ev: DatabaseEvent) => {
     setTitle(ev.title);
     setEventDate(ev.event_date);
@@ -147,6 +156,11 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     setResendFromEmail(commConfig.fromEmail);
     setOrganiserWhatsApp(getOrganiserWhatsAppNumber());
     setTestEmailRecipient(existing?.email || 'player.verify@naadansmash.com');
+
+    const currentSmsConfig = smsService.getConfig();
+    setSmsProvider(currentSmsConfig.provider);
+    setSmsApiKey(currentSmsConfig.apiKey || '');
+    setTestSmsPhone(getOrganiserWhatsAppNumber() || '8304883872');
 
     let isMounted = true;
     const initList = async () => {
@@ -428,8 +442,34 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     if (organiserWhatsApp.trim()) {
       saveOrganiserWhatsAppNumber(organiserWhatsApp.trim());
     }
+    smsService.saveConfig({
+      provider: smsProvider,
+      apiKey: smsApiKey.trim(),
+    });
     setCommSaveSuccess(true);
     setTimeout(() => setCommSaveSuccess(false), 3000);
+  };
+
+  const handleSendTestSms = async () => {
+    if (!testSmsPhone || testSmsPhone.replace(/\D/g, '').length < 10) {
+      setTestSmsResult({ success: false, message: 'Please enter a valid 10-digit mobile number.' });
+      return;
+    }
+    setSendingTestSms(true);
+    setTestSmsResult(null);
+    try {
+      const cleanPhone = testSmsPhone.replace(/\D/g, '').slice(-10);
+      const testCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const res = await smsService.sendSmsOtp(cleanPhone, testCode);
+      setTestSmsResult({
+        success: res.success,
+        message: res.success ? `✓ SMS OTP (${testCode}) sent to +91 ${cleanPhone}!` : res.message,
+      });
+    } catch (e: any) {
+      setTestSmsResult({ success: false, message: e.message || 'Failed to dispatch test SMS.' });
+    } finally {
+      setSendingTestSms(false);
+    }
   };
 
   const handleSendTestEmail = async () => {
@@ -1519,6 +1559,64 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                       </p>
                     </div>
 
+                    {/* SMS Gateway & Mobile OTP Configuration */}
+                    <div className="pt-4 border-t border-black/[0.06] space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-brand-teal" />
+                        <h4 className="font-heading font-extrabold text-sm uppercase text-brand-black">
+                          SMS & Mobile OTP Delivery Gateway
+                        </h4>
+                      </div>
+
+                      <p className="text-xs text-brand-charcoal/80 leading-relaxed">
+                        Configure a cellular SMS gateway to deliver real SMS OTPs directly to any participant's mobile phone number in India.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1">
+                            SMS Gateway Provider
+                          </label>
+                          <select
+                            value={smsProvider}
+                            onChange={(e) => setSmsProvider(e.target.value as any)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-black/[0.08] text-xs font-mono"
+                          >
+                            <option value="fast2sms">Fast2SMS (India Quick OTP)</option>
+                            <option value="2factor">2Factor.in (India SMS Gateway)</option>
+                            <option value="twilio">Twilio SMS</option>
+                            <option value="none">WhatsApp & Device Link Only</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1">
+                            API Key / Auth Token
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showSmsKey ? 'text' : 'password'}
+                              value={smsApiKey}
+                              onChange={(e) => setSmsApiKey(e.target.value)}
+                              placeholder={smsProvider === 'fast2sms' ? 'Enter Fast2SMS API key' : 'Enter SMS API key'}
+                              className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white border border-black/[0.08] text-xs font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSmsKey(!showSmsKey)}
+                              className="absolute right-3 top-2.5 text-brand-muted hover:text-brand-black"
+                            >
+                              {showSmsKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] text-brand-muted block">
+                        Get an instant API key from <a href="https://www.fast2sms.com" target="_blank" rel="noreferrer" className="text-brand-teal underline">Fast2SMS.com</a> (includes free Indian SMS credits on signup).
+                      </span>
+                    </div>
+
                     <div className="pt-3 flex justify-end">
                       <button
                         type="submit"
@@ -1579,6 +1677,61 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                             {testEmailResult.success ? '✓ Resend Confirmed Delivery' : 'Resend Dispatch Notice'}
                           </strong>
                           <span>{testEmailResult.message}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SMS Gateway Test Card */}
+                  <div className="p-5 rounded-2xl bg-white border border-black/[0.08] shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 text-brand-charcoal">
+                      <Smartphone className="w-4 h-4 text-brand-teal" />
+                      <h4 className="font-heading font-extrabold text-sm uppercase text-brand-black">
+                        Send Test Cellular SMS OTP
+                      </h4>
+                    </div>
+
+                    <p className="text-xs text-brand-charcoal/80 leading-relaxed">
+                      Dispatch a real SMS OTP directly to any 10-digit mobile number to verify cellular carrier delivery.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        value={testSmsPhone}
+                        onChange={(e) => setTestSmsPhone(e.target.value.replace(/\D/g, ''))}
+                        placeholder="9876543210"
+                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-brand-offwhite border border-black/[0.08] text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSendTestSms}
+                        disabled={sendingTestSms}
+                        className="px-5 py-2.5 rounded-xl bg-brand-teal hover:bg-[#126f8c] text-white text-xs font-mono uppercase tracking-wider font-semibold transition-colors disabled:opacity-50 shrink-0"
+                      >
+                        {sendingTestSms ? 'Dispatching SMS...' : 'Send Test SMS'}
+                      </button>
+                    </div>
+
+                    {testSmsResult && (
+                      <div
+                        className={`p-3.5 rounded-xl text-xs font-mono flex items-start gap-2.5 border ${
+                          testSmsResult.success
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                            : 'bg-rose-50 border-rose-200 text-rose-950'
+                        }`}
+                      >
+                        {testSmsResult.success ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <strong className="block font-semibold">
+                            {testSmsResult.success ? '✓ SMS Dispatched to Phone' : 'SMS Dispatch Notice'}
+                          </strong>
+                          <span>{testSmsResult.message}</span>
                         </div>
                       </div>
                     )}
