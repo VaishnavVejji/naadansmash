@@ -79,6 +79,10 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     url: string;
     playerName: string;
     regNo: string;
+    playerId: string;
+    phone: string;
+    utr?: string;
+    paymentStatus?: string;
   } | null>(null);
 
   // Event editing state
@@ -371,6 +375,93 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       }
     } catch {
       alert('An error occurred while resetting the session roster.');
+    }
+  };
+
+  const handleDeleteScreenshot = async (regId: string, playerName: string) => {
+    const confirmDelete = window.confirm(
+      `Remove payment screenshot image for ${playerName}?\n\nThis will delete the heavy image data from the database to save storage, while keeping the participant verified, their ticket, and attendance records intact.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const ok = await eventsService.deleteRegistrationScreenshot(regId);
+      if (ok) {
+        setRegistrations((prev) =>
+          prev.map((r) => (r.id === regId ? { ...r, payment_screenshot_path: null } : r))
+        );
+        if (viewingScreenshot?.playerId === regId) {
+          setViewingScreenshot(null);
+        }
+        setFeedbackBanner({
+          message: `✓ Payment screenshot for ${playerName} deleted. Storage freed.`,
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 3500);
+      }
+    } catch {
+      alert('Failed to delete screenshot image.');
+    }
+  };
+
+  const handlePurgeSessionScreenshots = async () => {
+    if (!selectedEventId) return;
+    const screenshotCount = registrations.filter((r) => !!r.payment_screenshot_path).length;
+    if (screenshotCount === 0) {
+      alert('No screenshot images found to purge in this event session.');
+      return;
+    }
+
+    const confirmPurge = window.confirm(
+      `Clean Image Storage:\nAre you sure you want to delete all ${screenshotCount} payment screenshot images for this session?\n\n• Participant records, ticket numbers, attendance, and UTRs will remain completely saved in the database.\n• Only the heavy image blobs will be deleted to free database space.`
+    );
+    if (!confirmPurge) return;
+
+    try {
+      const res = await eventsService.purgeEventScreenshots(selectedEventId);
+      if (res.success) {
+        setRegistrations((prev) =>
+          prev.map((r) => ({ ...r, payment_screenshot_path: null }))
+        );
+        setFeedbackBanner({
+          message: `✓ Storage cleaned: Purged ${res.clearedCount} screenshot images. All participant data preserved.`,
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 4000);
+      }
+    } catch {
+      alert('Failed to purge screenshots.');
+    }
+  };
+
+  const handleCompleteAndCloseEvent = async () => {
+    if (!selectedEventId) return;
+    const currentEvent = allEvents.find((e) => e.id === selectedEventId);
+    if (!currentEvent) return;
+
+    const confirmClose = window.confirm(
+      `Complete & Close Event: "${currentEvent.title}"?\n\n• The session will be marked as 'completed' (closing new registrations).\n• All player records, attendance, tickets, and payment history will remain safely stored in the database.\n• Heavy screenshot photos will be automatically cleaned up to keep the database lean.\n\nProceed?`
+    );
+    if (!confirmClose) return;
+
+    try {
+      const res = await eventsService.closeAndCompleteEvent(selectedEventId, true);
+      if (res.success) {
+        setAllEvents((prev) =>
+          prev.map((e) => (e.id === selectedEventId ? { ...e, status: 'completed' } : e))
+        );
+        setRegistrations((prev) =>
+          prev.map((r) => ({ ...r, payment_screenshot_path: null }))
+        );
+        setFeedbackBanner({
+          message: `✓ Event completed and closed! ${res.message}`,
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 5000);
+        onEventUpdated();
+      }
+    } catch {
+      alert('Failed to complete and close event.');
     }
   };
 
@@ -924,6 +1015,31 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                     <PlusCircle className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">New Event</span>
                   </button>
+
+                  {/* Quick Event Closure Action */}
+                  {(() => {
+                    const activeEv = allEvents.find((e) => e.id === selectedEventId);
+                    if (!activeEv) return null;
+                    if (activeEv.status === 'published') {
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleCompleteAndCloseEvent}
+                          className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-mono uppercase tracking-wider font-semibold transition-colors flex items-center gap-1 shrink-0"
+                          title="Complete this event and clean heavy payment images"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="hidden sm:inline">Complete & Close Event</span>
+                          <span className="sm:hidden">Close</span>
+                        </button>
+                      );
+                    }
+                    return (
+                      <span className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-300 text-gray-700 text-[10px] font-mono uppercase font-bold tracking-wider">
+                        {activeEv.status}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -993,6 +1109,18 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                         <span>Export CSV</span>
                       </button>
 
+                      {registrations.some((r) => !!r.payment_screenshot_path) && (
+                        <button
+                          type="button"
+                          onClick={handlePurgeSessionScreenshots}
+                          className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-900 text-xs font-mono font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                          title="Purge uploaded payment photos from database while preserving player registration records"
+                        >
+                          <FileImage className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Purge Images</span>
+                        </button>
+                      )}
+
                       {registrations.length > 0 && (
                         <button
                           type="button"
@@ -1023,69 +1151,120 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                           key={player.id}
                           className="p-4 rounded-2xl bg-white border border-black/[0.08] hover:border-black/20 transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
                         >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-heading font-bold text-base text-brand-black">
-                                {player.full_name}
-                              </span>
-                              <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-brand-offwhite border border-black/[0.08] text-brand-teal font-semibold">
-                                {player.registration_number}
-                              </span>
-                              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-black/[0.04] text-brand-charcoal uppercase">
-                                {player.skill_level}
-                              </span>
-
-                              {/* Payment Status Tag */}
-                              {player.payment_status === 'verified' && (
-                                <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase">
-                                  ✓ Paid
-                                </span>
-                              )}
-                              {player.payment_status === 'rejected' && (
-                                <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold uppercase">
-                                  ✗ Rejected
-                                </span>
-                              )}
-                              {player.payment_status === 'pending' && (
-                                <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold uppercase">
-                                  Pending
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3 text-xs font-mono text-brand-muted flex-wrap">
-                              <span>📱 {player.phone}</span>
-                              {player.email && <span>✉ {player.email}</span>}
-                              {player.utr_reference && (
-                                <span>
-                                  UTR:{' '}
-                                  <strong className="text-brand-black">{player.utr_reference}</strong>
-                                </span>
-                              )}
-                              {player.payment_screenshot_path && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setViewingScreenshot({
-                                      url: player.payment_screenshot_path,
-                                      playerName: player.full_name,
-                                      regNo: player.registration_number,
-                                    })
-                                  }
-                                  className="inline-flex items-center gap-1 text-brand-teal hover:underline font-semibold"
-                                >
-                                  <FileImage className="w-3.5 h-3.5" />
-                                  <span>View Receipt</span>
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Rejection Reason Display if Rejected */}
-                            {player.payment_status === 'rejected' && player.rejection_reason && (
-                              <div className="p-2 rounded-lg bg-rose-50 border border-rose-100 text-[11px] font-mono text-rose-900 mt-1">
-                                <strong>Rejection Reason:</strong> "{player.rejection_reason}"
+                          <div className="flex items-start sm:items-center gap-3.5">
+                            {/* Inline Payment Screenshot Thumbnail */}
+                            {player.payment_screenshot_path ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewingScreenshot({
+                                    url: player.payment_screenshot_path,
+                                    playerName: player.full_name,
+                                    regNo: player.registration_number,
+                                    playerId: player.id,
+                                    phone: player.phone,
+                                    utr: player.utr_reference,
+                                    paymentStatus: player.payment_status,
+                                  })
+                                }
+                                className="relative group shrink-0 rounded-xl overflow-hidden border-2 border-brand-teal/40 hover:border-brand-teal transition-all shadow-2xs"
+                                title="Click to view payment photo & verify"
+                              >
+                                <img
+                                  src={player.payment_screenshot_path}
+                                  alt={`Receipt for ${player.full_name}`}
+                                  className="w-14 h-14 object-cover group-hover:scale-105 transition-transform"
+                                />
+                                <div className="absolute inset-0 bg-brand-black/25 group-hover:bg-brand-black/0 transition-colors flex items-center justify-center">
+                                  <Eye className="w-4 h-4 text-white drop-shadow-md" />
+                                </div>
+                              </button>
+                            ) : (
+                              <div className="w-14 h-14 rounded-xl bg-black/[0.03] border border-dashed border-black/[0.08] shrink-0 flex flex-col items-center justify-center text-[9px] font-mono text-brand-muted text-center p-1 leading-tight">
+                                <span>No Photo</span>
                               </div>
                             )}
+
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-heading font-bold text-base text-brand-black">
+                                  {player.full_name}
+                                </span>
+                                <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-brand-offwhite border border-black/[0.08] text-brand-teal font-semibold">
+                                  {player.registration_number}
+                                </span>
+                                <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-black/[0.04] text-brand-charcoal uppercase">
+                                  {player.skill_level}
+                                </span>
+
+                                {/* Payment Status Tag */}
+                                {player.payment_status === 'verified' && (
+                                  <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase">
+                                    ✓ Paid
+                                  </span>
+                                )}
+                                {player.payment_status === 'rejected' && (
+                                  <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold uppercase">
+                                    ✗ Rejected
+                                  </span>
+                                )}
+                                {player.payment_status === 'pending' && (
+                                  <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold uppercase">
+                                    Pending
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-3 text-xs font-mono text-brand-muted flex-wrap">
+                                <span>📱 {player.phone}</span>
+                                {player.email && <span>✉ {player.email}</span>}
+                                {player.utr_reference && (
+                                  <span>
+                                    UTR:{' '}
+                                    <strong className="text-brand-black">{player.utr_reference}</strong>
+                                  </span>
+                                )}
+                                {player.payment_screenshot_path ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setViewingScreenshot({
+                                          url: player.payment_screenshot_path,
+                                          playerName: player.full_name,
+                                          regNo: player.registration_number,
+                                          playerId: player.id,
+                                          phone: player.phone,
+                                          utr: player.utr_reference,
+                                          paymentStatus: player.payment_status,
+                                        })
+                                      }
+                                      className="inline-flex items-center gap-1 text-brand-teal hover:underline font-semibold"
+                                    >
+                                      <FileImage className="w-3.5 h-3.5" />
+                                      <span>View Proof</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteScreenshot(player.id, player.full_name)}
+                                      className="text-[11px] text-brand-muted hover:text-rose-600 transition-colors"
+                                      title="Delete image file (free database space)"
+                                    >
+                                      (Delete Image)
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-gray-400 italic">No image attached</span>
+                                )}
+                              </div>
+
+                              {/* Rejection Reason Display if Rejected */}
+                              {player.payment_status === 'rejected' && player.rejection_reason && (
+                                <div className="p-2 rounded-lg bg-rose-50 border border-rose-100 text-[11px] font-mono text-rose-900 mt-1">
+                                  <strong>Rejection Reason:</strong> "{player.rejection_reason}"
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Quick Toggles: Attendance & Payment */}
@@ -1853,17 +2032,28 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
         </div>
       )}
 
-      {/* Payment Screenshot Preview Modal */}
+      {/* Payment Screenshot Preview & Verification Modal */}
       {viewingScreenshot && (
-        <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="relative bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+          <div className="relative bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-black/10 flex flex-col max-h-[92vh]">
             <div className="p-4 bg-brand-black text-white flex items-center justify-between">
               <div>
-                <h4 className="font-heading font-extrabold text-sm uppercase text-white">
-                  Payment Screenshot
-                </h4>
-                <p className="text-[11px] font-mono text-white/70">
-                  {viewingScreenshot.playerName} • {viewingScreenshot.regNo}
+                <div className="flex items-center gap-2">
+                  <h4 className="font-heading font-extrabold text-sm uppercase text-white">
+                    Payment Verification
+                  </h4>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full uppercase font-bold ${
+                    viewingScreenshot.paymentStatus === 'verified'
+                      ? 'bg-emerald-500 text-white'
+                      : viewingScreenshot.paymentStatus === 'rejected'
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-amber-500 text-white'
+                  }`}>
+                    {viewingScreenshot.paymentStatus || 'Pending'}
+                  </span>
+                </div>
+                <p className="text-[11px] font-mono text-white/70 mt-0.5">
+                  {viewingScreenshot.playerName} • {viewingScreenshot.regNo} • 📱 +91 {viewingScreenshot.phone}
                 </p>
               </div>
               <button
@@ -1875,25 +2065,64 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
               </button>
             </div>
 
-            <div className="p-4 bg-black/5 overflow-auto flex items-center justify-center min-h-[300px]">
+            {/* Attendee Details Strip */}
+            <div className="px-4 py-2.5 bg-brand-offwhite border-b border-black/[0.08] flex items-center justify-between text-xs font-mono">
+              <div>
+                <span className="text-[10px] text-brand-muted block uppercase">Submitted UTR Reference</span>
+                <strong className="text-brand-black">{viewingScreenshot.utr || 'None provided (Photo only)'}</strong>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-brand-muted block uppercase">Uploaded Proof</span>
+                <span className="text-brand-teal font-semibold">UPI Payment Screenshot</span>
+              </div>
+            </div>
+
+            {/* Photo Container */}
+            <div className="p-4 bg-black/5 overflow-auto flex items-center justify-center min-h-[300px] max-h-[60vh]">
               <img
                 src={viewingScreenshot.url}
                 alt={`Payment receipt for ${viewingScreenshot.playerName}`}
-                className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl shadow-md border border-black/10"
+                className="max-h-[58vh] w-auto max-w-full object-contain rounded-xl shadow-md border border-black/10"
               />
             </div>
 
-            <div className="p-3 bg-brand-offwhite border-t border-black/[0.08] flex items-center justify-between">
-              <span className="text-[11px] font-mono text-brand-muted">
-                Uploaded by attendee during registration
-              </span>
+            {/* Direct Verification & Data Removal Actions */}
+            <div className="p-3.5 bg-brand-offwhite border-t border-black/[0.08] flex flex-col sm:flex-row items-center justify-between gap-2.5">
               <button
                 type="button"
-                onClick={() => setViewingScreenshot(null)}
-                className="px-4 py-1.5 rounded-xl bg-brand-black text-white text-xs font-mono uppercase tracking-wider font-semibold hover:bg-brand-charcoal transition-colors"
+                onClick={() => {
+                  handleDeleteScreenshot(viewingScreenshot.playerId, viewingScreenshot.playerName);
+                }}
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-mono font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors"
+                title="Delete this image to save storage once verified"
               >
-                Close
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Delete Image (Free Storage)</span>
               </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {viewingScreenshot.paymentStatus !== 'verified' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handlePaymentChange(viewingScreenshot.playerId, 'verified');
+                      setViewingScreenshot((prev) => prev ? { ...prev, paymentStatus: 'verified' } : null);
+                    }}
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono uppercase tracking-wider font-semibold shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>✓ Verify & Approve Payment</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setViewingScreenshot(null)}
+                  className="px-4 py-2 rounded-xl bg-brand-black text-white text-xs font-mono uppercase tracking-wider font-semibold hover:bg-brand-charcoal transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

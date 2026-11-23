@@ -21,6 +21,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { eventsService } from '../../services/eventsService';
 import { PaymentSettings, ParticipantRegistrationStatus } from '../../types';
 import { createWhatsAppLink } from '../../utils/whatsapp';
+import { optimizeImageForUpload } from '../../utils/imageOptimizer';
 
 interface LookupRegistrationModalProps {
   isOpen: boolean;
@@ -161,7 +162,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
     }
   };
 
-  const handleInlineScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInlineScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -171,21 +172,20 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setInlineSubmitError('Image size should be less than 5MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      setInlineSubmitError('Image size should be less than 10MB.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setInlineScreenshotName(file.name);
     setInlineSubmitError('');
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setInlineScreenshot(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageForUpload(file);
+      setInlineScreenshot(optimized);
+    } catch {
+      setInlineSubmitError('Failed to process image. Please try another screenshot.');
+    }
   };
 
   const handleRemoveInlineScreenshot = () => {

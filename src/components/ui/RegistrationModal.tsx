@@ -16,6 +16,7 @@ import {
 import { DatabaseEvent, SkillLevel, PaymentSettings, ParticipantRegistrationStatus } from '../../types';
 import { eventsService } from '../../services/eventsService';
 import { EmailSendResult } from '../../services/emailService';
+import { optimizeImageForUpload } from '../../utils/imageOptimizer';
 
 interface RegistrationModalProps {
   event: DatabaseEvent | null;
@@ -72,7 +73,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
   if (!isOpen || !event) return null;
 
-  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -82,21 +83,20 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg('Image size should be less than 5MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg('Image size should be less than 10MB.');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setScreenshotName(file.name);
     setErrorMsg('');
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setScreenshotData(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageForUpload(file);
+      setScreenshotData(optimized);
+    } catch {
+      setErrorMsg('Failed to process image. Please try another screenshot.');
+    }
   };
 
   const handleRemoveScreenshot = () => {

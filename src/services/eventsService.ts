@@ -1713,4 +1713,143 @@ export const eventsService = {
 
     return true;
   },
+
+  /**
+   * Delete / remove the uploaded payment screenshot for a specific registration
+   * to free up database and storage space once payment has been verified or if invalid,
+   * while keeping the registration record, ticket number, and attendance intact.
+   */
+  async deleteRegistrationScreenshot(regId: string): Promise<boolean> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('registrations')
+          .update({ payment_screenshot_path: null })
+          .eq('id', regId);
+        if (error) console.warn('Supabase delete screenshot error:', error);
+      } catch (e) {
+        console.warn('Supabase delete screenshot exception:', e);
+      }
+    }
+
+    try {
+      const list = getStoredRegistrations();
+      const idx = list.findIndex((r: any) => r.id === regId);
+      if (idx >= 0) {
+        list[idx].payment_screenshot_path = null;
+        saveStoredRegistrations(list);
+      }
+
+      const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
+      const updatedTickets = myTickets.map((t: any) => {
+        if (t.id === regId || t.registrationId === regId) {
+          return { ...t, payment_screenshot_path: null };
+        }
+        return t;
+      });
+      localStorage.setItem('naadansmash_my_tickets', JSON.stringify(updatedTickets));
+    } catch (e) {
+      console.warn('Local delete screenshot exception:', e);
+    }
+
+    return true;
+  },
+
+  /**
+   * Bulk purge all payment screenshot images for an event session.
+   * Keeps all player participant records, ticket numbers, payment statuses, and UTRs,
+   * while removing the heavy image payloads to keep the database lean and performant.
+   */
+  async purgeEventScreenshots(eventId: string): Promise<{ success: boolean; clearedCount: number }> {
+    let clearedCount = 0;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('registrations')
+          .update({ payment_screenshot_path: null })
+          .eq('event_id', eventId);
+        if (error) console.warn('Supabase purge screenshots error:', error);
+      } catch (e) {
+        console.warn('Supabase purge exception:', e);
+      }
+    }
+
+    try {
+      const list = getStoredRegistrations();
+      let modified = false;
+      for (const r of list) {
+        if (r.event_id === eventId && r.payment_screenshot_path) {
+          r.payment_screenshot_path = null;
+          clearedCount++;
+          modified = true;
+        }
+      }
+      if (modified) {
+        saveStoredRegistrations(list);
+      }
+
+      const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
+      const updatedTickets = myTickets.map((t: any) => {
+        if (t.eventId === eventId) {
+          return { ...t, payment_screenshot_path: null };
+        }
+        return t;
+      });
+      localStorage.setItem('naadansmash_my_tickets', JSON.stringify(updatedTickets));
+    } catch (e) {
+      console.warn('Local purge exception:', e);
+    }
+
+    return { success: true, clearedCount };
+  },
+
+  /**
+   * Close and complete an event session.
+   * - Marks event status as 'completed' (or 'closed') so registrations stop.
+   * - Retains player registration history, attendance records, and ticket logs.
+   * - Optionally purges heavy screenshot images to optimize database storage.
+   */
+  async closeAndCompleteEvent(
+    eventId: string,
+    purgeScreenshots = true
+  ): Promise<{ success: boolean; message: string; clearedScreenshots: number }> {
+    let clearedScreenshots = 0;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('events')
+          .update({ status: 'completed' })
+          .eq('id', eventId);
+        if (error) console.warn('Supabase complete event error:', error);
+      } catch (e) {
+        console.warn('Supabase complete event exception:', e);
+      }
+    }
+
+    try {
+      const events = getStoredEvents();
+      const ev = events.find((e) => e.id === eventId);
+      if (ev) {
+        ev.status = 'completed';
+        saveStoredEvents(events);
+      }
+    } catch (e) {
+      console.warn('Local event update exception:', e);
+    }
+
+    if (purgeScreenshots) {
+      const purgeRes = await this.purgeEventScreenshots(eventId);
+      clearedScreenshots = purgeRes.clearedCount;
+    }
+
+    return {
+      success: true,
+      message: `Event session marked as completed. ${
+        purgeScreenshots ? `Purged ${clearedScreenshots} payment screenshot images while preserving participant records.` : ''
+      }`,
+      clearedScreenshots,
+    };
+  },
 };
