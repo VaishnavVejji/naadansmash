@@ -12,7 +12,7 @@ NAADANSMASH is a production-ready, full-stack web application designed for Kochi
 ### 1. Participant Experience
 - **Interactive Registration Flow:** Atomic court booking with skill level selection, duplicate prevention, and automatic closure when capacity is reached.
 - **Privacy & Registration Controls:** Exact available slot counts are kept private from public view; admin can close registration at any time so nobody else can register.
-- **Dynamic Payment Instructions:** UPI QR code generation, instant clipboard copy for Organiser UPI ID (`naadansmash@upi`), and mobile tap-to-pay deep-link.
+- **Dynamic Payment Instructions:** UPI QR code generation, instant clipboard copy for Organiser UPI ID (`psivaram17-1@oksbi`), and mobile 1-tap UPI app payment button (GPay, PhonePe, Paytm, BHIM).
 - **4 Distinct Communication & Notification States:**
   - **Registration Received:** Confirms roster hold, displays unique registration number (`NS-YYMM-XXXXXX`), and prompts UPI payment.
   - **Payment Submitted:** Displays under-review note and submitted 12-digit UTR reference.

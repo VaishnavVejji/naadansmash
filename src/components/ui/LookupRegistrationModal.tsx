@@ -13,7 +13,9 @@ import {
   ExternalLink, 
   Upload, 
   ShieldCheck, 
-  FileText
+  FileText,
+  Smartphone,
+  ArrowRight
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { eventsService } from '../../services/eventsService';
@@ -496,6 +498,21 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                         Accepted: Google Pay • PhonePe • Paytm • BHIM
                       </div>
                     </div>
+                  </div>
+
+                  {/* 1-Tap Open UPI App Button */}
+                  <div className="pt-2 border-t border-black/[0.06]">
+                    <a
+                      href={`upi://pay?pa=${encodeURIComponent(paymentSettings.upi_id)}&pn=${encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu')}&am=${result.registration_fee || 250}&cu=INR&tn=${encodeURIComponent(`NAADANSMASH ${result.registration_number}`)}`}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-teal to-[#0f4c5c] hover:from-[#126f8c] hover:to-[#0d3f4d] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                    >
+                      <Smartphone className="w-4 h-4 text-emerald-300" />
+                      <span>Open UPI App to Pay ₹{result.registration_fee || 250} (GPay / PhonePe / Paytm)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </a>
+                    <p className="text-[10px] text-center text-brand-muted mt-1 font-mono">
+                      Paying to <strong>{paymentSettings.upi_id}</strong> ({paymentSettings.account_display_name})
+                    </p>
                   </div>
 
                   {/* Inline Form to Submit 12-Digit UTR */}

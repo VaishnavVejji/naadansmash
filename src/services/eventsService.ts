@@ -56,10 +56,10 @@ const UPCOMING_DEFAULT_EVENT: DatabaseEvent = {
 
 const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   id: '00000000-0000-0000-0000-000000000001',
-  upi_id: 'naadansmash@upi',
+  upi_id: 'psivaram17-1@oksbi',
   qr_image_path: '/images/qr.jpeg',
-  account_display_name: 'NAADANSMASH Kochi Sports Club',
-  payment_instructions: 'Transfer ₹250 via GPay, PhonePe, or Paytm to naadansmash@upi. Enter the 12-digit UTR reference number upon registration to expedite court check-in.',
+  account_display_name: 'Sivaram P Babu (NAADANSMASH)',
+  payment_instructions: 'Transfer ₹250 via GPay, PhonePe, or Paytm to psivaram17-1@oksbi. Enter the 12-digit UTR reference number upon registration to expedite court check-in.',
 };
 
 const STORAGE_KEY_EVENTS = 'naadansmash_events_v2';
@@ -315,9 +315,9 @@ export const eventsService = {
         if (!error && data) {
           return {
             id: data.id,
-            upi_id: data.upi_id,
+            upi_id: data.upi_id && data.upi_id !== 'naadansmash@upi' ? data.upi_id : 'psivaram17-1@oksbi',
             qr_image_path: data.qr_image_path && data.qr_image_path !== '/images/naadansmash-logo.png' ? data.qr_image_path : '/images/qr.jpeg',
-            account_display_name: data.account_display_name,
+            account_display_name: data.account_display_name && data.account_display_name !== 'NAADANSMASH Kochi Sports Club' ? data.account_display_name : 'Sivaram P Babu (NAADANSMASH)',
             payment_instructions: data.payment_instructions,
           };
         }
@@ -332,6 +332,12 @@ export const eventsService = {
         const parsed = JSON.parse(stored);
         if (!parsed.qr_image_path || parsed.qr_image_path === '/images/naadansmash-logo.png') {
           parsed.qr_image_path = '/images/qr.jpeg';
+        }
+        if (!parsed.upi_id || parsed.upi_id === 'naadansmash@upi') {
+          parsed.upi_id = 'psivaram17-1@oksbi';
+        }
+        if (!parsed.account_display_name || parsed.account_display_name === 'NAADANSMASH Kochi Sports Club') {
+          parsed.account_display_name = 'Sivaram P Babu (NAADANSMASH)';
         }
         return parsed;
       }

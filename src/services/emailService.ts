@@ -219,7 +219,7 @@ export const emailService = {
       <div class="upi-box">
         <div class="upi-title">Payment Instructions</div>
         <p class="instructions">
-          1. Transfer <strong>₹${info.registrationFee}</strong> via GPay / PhonePe / Paytm to <strong>naadansmash@upi</strong>.<br>
+          1. Transfer <strong>₹${info.registrationFee}</strong> via GPay / PhonePe / Paytm to <strong>psivaram17-1@oksbi</strong> (Sivaram P Babu).<br>
           2. Enter your 12-digit transaction UTR reference number on the <strong>My Ticket</strong> lookup portal or message the organiser on WhatsApp.<br>
           3. Once verified by our organiser, your registration status will update to confirmed!
         </p>
@@ -255,7 +255,7 @@ Registration Details:
 - Entry Fee: ₹${info.registrationFee}
 
 Payment Instructions:
-1. Transfer ₹${info.registrationFee} via GPay/PhonePe/Paytm to naadansmash@upi.
+1. Transfer ₹${info.registrationFee} via GPay/PhonePe/Paytm to psivaram17-1@oksbi (Sivaram P Babu).
 2. Enter your 12-digit UTR reference on the NAADANSMASH "My Ticket" portal or message the organiser.
 3. Once verified, your status will update to confirmed.
 

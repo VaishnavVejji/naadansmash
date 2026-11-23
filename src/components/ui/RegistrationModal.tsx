@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, CheckCircle2, ArrowRight, Copy, Check, CreditCard, QrCode, Upload, Trash2, Mail, Clock, ShieldCheck } from 'lucide-react';
+import { X, CheckCircle2, ArrowRight, Copy, Check, QrCode, Upload, Trash2, Mail, Clock, ShieldCheck, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { DatabaseEvent, SkillLevel, PaymentSettings, ParticipantRegistrationStatus } from '../../types';
 import { eventsService } from '../../services/eventsService';
@@ -442,6 +442,21 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     </div>
                   </div>
 
+                  {/* 1-Tap Open UPI App Button */}
+                  <div className="pt-1">
+                    <a
+                      href={upiPaymentUri}
+                      className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-brand-teal to-[#0f4c5c] hover:from-[#126f8c] hover:to-[#0d3f4d] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                    >
+                      <Smartphone className="w-4 h-4 text-emerald-300" />
+                      <span>Open UPI App to Pay ₹{event.registration_fee} (GPay / PhonePe / Paytm)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </a>
+                    <p className="text-[10px] text-center text-brand-muted mt-1.5 font-mono">
+                      Paying to <strong>{paymentSettings.upi_id}</strong> ({paymentSettings.account_display_name})
+                    </p>
+                  </div>
+
                   {/* Inline Form to Submit 12-Digit UTR */}
                   <form onSubmit={handlePostRegistrationPaymentSubmit} className="pt-3 border-t border-black/[0.06] space-y-2.5">
                     <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-black">
@@ -763,13 +778,14 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                           </span>
                         </div>
 
-                        {/* Mobile tap to pay link */}
+                        {/* 1-Tap Open in UPI App Button */}
                         <a
                           href={upiPaymentUri}
-                          className="sm:hidden inline-flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg bg-brand-teal text-white text-[11px] font-mono font-semibold uppercase tracking-wider hover:bg-[#126f8c] transition-colors mt-1"
+                          className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-teal to-[#0f4c5c] hover:from-[#126f8c] hover:to-[#0d3f4d] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98] mt-1"
                         >
-                          <CreditCard className="w-3.5 h-3.5" />
-                          <span>Tap to Open in UPI App</span>
+                          <Smartphone className="w-4 h-4 text-emerald-300" />
+                          <span>Pay ₹{event.registration_fee} via UPI App (GPay / PhonePe / Paytm)</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </a>
                       </div>
                     </div>

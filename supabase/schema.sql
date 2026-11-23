@@ -434,10 +434,10 @@ INSERT INTO public.payment_settings (
   payment_instructions
 ) VALUES (
   '00000000-0000-0000-0000-000000000001',
-  'naadansmash@upi',
-  '/images/naadansmash-logo.png',
-  'NAADANSMASH Kochi Sports Club',
-  'Transfer ₹250 via GPay, PhonePe, or Paytm to naadansmash@upi. Enter the 12-digit UTR reference number upon registration to expedite court check-in.'
+  'psivaram17-1@oksbi',
+  '/images/qr.jpeg',
+  'Sivaram P Babu (NAADANSMASH)',
+  'Transfer ₹250 via GPay, PhonePe, or Paytm to psivaram17-1@oksbi. Enter the 12-digit UTR reference number upon registration to expedite court check-in.'
 ) ON CONFLICT (id) DO UPDATE SET
   upi_id = EXCLUDED.upi_id,
   account_display_name = EXCLUDED.account_display_name;

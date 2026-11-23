@@ -1121,7 +1121,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                           type="text"
                           value={upiId}
                           onChange={(e) => setUpiId(e.target.value)}
-                          placeholder="e.g. naadansmash@upi"
+                          placeholder="e.g. psivaram17-1@oksbi"
                           className="w-full px-3 py-2 rounded-xl bg-white border border-black/[0.08] text-xs font-mono"
                         />
                       </div>
@@ -1133,7 +1133,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                           type="text"
                           value={accountName}
                           onChange={(e) => setAccountName(e.target.value)}
-                          placeholder="e.g. NAADANSMASH Kochi Sports Club"
+                          placeholder="e.g. Sivaram P Babu (NAADANSMASH)"
                           className="w-full px-3 py-2 rounded-xl bg-white border border-black/[0.08] text-xs"
                         />
                       </div>
