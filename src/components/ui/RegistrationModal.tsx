@@ -69,6 +69,12 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         setPhone(lastPhone);
       }
     }
+
+    const handlePaymentUpdate = (e: any) => {
+      if (e.detail) setPaymentSettings(e.detail);
+    };
+    window.addEventListener('naadansmash_payment_updated', handlePaymentUpdate);
+    return () => window.removeEventListener('naadansmash_payment_updated', handlePaymentUpdate);
   }, [isOpen, playerPhone]);
 
   if (!isOpen || !event) return null;

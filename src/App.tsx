@@ -70,6 +70,16 @@ export const App: React.FC = () => {
   // Key to trigger event refresh
   const [eventUpdateKey, setEventUpdateKey] = useState(0);
 
+  useEffect(() => {
+    const handleUpdate = () => setEventUpdateKey((prev) => prev + 1);
+    window.addEventListener('naadansmash_event_updated', handleUpdate);
+    window.addEventListener('naadansmash_payment_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('naadansmash_event_updated', handleUpdate);
+      window.removeEventListener('naadansmash_payment_updated', handleUpdate);
+    };
+  }, []);
+
   // Lightbox state
   const [lightboxImages, setLightboxImages] = useState<GalleryImage[]>(GALLERY_IMAGES);
   const [lightboxOpen, setLightboxOpen] = useState(false);

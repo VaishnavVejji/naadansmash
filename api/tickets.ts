@@ -20,6 +20,8 @@ function getSupabase() {
 }
 
 // Universal seed registrations accessible across all devices
+const TICKETS_STORE_ID = 'ff808181a09d98f701a2098501bc2a23';
+
 const DEFAULT_SEED_TICKETS: any[] = [
   {
     id: 'reg-demo-001',

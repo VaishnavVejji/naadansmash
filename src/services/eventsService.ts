@@ -347,9 +347,40 @@ function saveStoredRegistrations(regs: any[]) {
 
 export const eventsService = {
   /**
-   * Fetches events from Supabase (or fallback cache) and computes available slots.
+   * Fetches events from cloud sync store, Supabase, or fallback cache and computes available slots.
    */
   async getEvents(): Promise<DatabaseEvent[]> {
+    // 1. Primary: Fetch from cloud sync store (/api/events)
+    try {
+      const res = await fetch('/api/events');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.events) && data.events.length > 0) {
+          const mapped: DatabaseEvent[] = data.events.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description || '',
+            event_date: item.event_date,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            venue: item.venue,
+            registration_fee: Number(item.registration_fee || 250),
+            max_participants: Number(item.max_participants || 24),
+            registration_deadline: item.registration_deadline,
+            status: item.status,
+            created_at: item.created_at,
+            available_slots: item.available_slots ?? Number(item.max_participants || 24),
+            isHistorical: item.status === 'completed' || item.event_date <= '2026-11-22',
+          }));
+
+          saveStoredEvents(mapped);
+          return mapped;
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud /api/events fetch exception, using database fallback:', e);
+    }
+
     const client = supabase;
     if (isSupabaseConfigured && client) {
       try {
@@ -431,6 +462,30 @@ export const eventsService = {
    * Fetches configurable organizer payment settings.
    */
   async getPaymentSettings(): Promise<PaymentSettings> {
+    // 1. Primary: Fetch from cloud sync store (/api/payment-settings)
+    try {
+      const res = await fetch('/api/payment-settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.success && data.settings?.upi_id) {
+          const s = data.settings;
+          const formatted: PaymentSettings = {
+            id: s.id || '00000000-0000-0000-0000-000000000001',
+            upi_id: s.upi_id && s.upi_id !== 'naadansmash@upi' ? s.upi_id : 'psivaram17-1@oksbi',
+            qr_image_path: s.qr_image_path && s.qr_image_path !== '/images/naadansmash-logo.png' ? s.qr_image_path : '/images/qr.jpeg',
+            account_display_name: s.account_display_name && s.account_display_name !== 'NAADANSMASH Kochi Sports Club' ? s.account_display_name : 'Sivaram P Babu (NAADANSMASH)',
+            payment_instructions: s.payment_instructions || 'Transfer ₹250 via GPay, PhonePe, or Paytm to psivaram17-1@oksbi. Enter the 12-digit UTR reference number upon registration to expedite court check-in.',
+          };
+          try {
+            localStorage.setItem(STORAGE_KEY_PAYMENT, JSON.stringify(formatted));
+          } catch {}
+          return formatted;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch payment settings from /api/payment-settings, using fallback', e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase
@@ -474,7 +529,7 @@ export const eventsService = {
   },
 
   /**
-   * Updates organizer payment settings in Supabase and local cache.
+   * Updates organizer payment settings in cloud sync store, Supabase, and local cache.
    */
   async updatePaymentSettings(settings: Partial<PaymentSettings>): Promise<boolean> {
     const current = await this.getPaymentSettings();
@@ -482,6 +537,17 @@ export const eventsService = {
       ...current,
       ...settings,
     };
+
+    // 1. Sync to cloud store (/api/payment-settings)
+    try {
+      fetch('/api/payment-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      }).catch((e) => console.warn('Cloud payment update background error:', e));
+    } catch (e) {
+      console.warn('Cloud payment update failed:', e);
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -502,6 +568,10 @@ export const eventsService = {
 
     try {
       localStorage.setItem(STORAGE_KEY_PAYMENT, JSON.stringify(updated));
+    } catch {}
+
+    try {
+      window.dispatchEvent(new CustomEvent('naadansmash_payment_updated', { detail: updated }));
     } catch {}
 
     return true;
@@ -1261,9 +1331,20 @@ export const eventsService = {
   },
 
   /**
-   * Manual event update by organizers.
+   * Manual event update by organizers with cloud sync.
    */
   async updateEventManually(updatedEvent: DatabaseEvent): Promise<boolean> {
+    // 1. Sync to cloud store (/api/events)
+    try {
+      fetch('/api/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: updatedEvent }),
+      }).catch((e) => console.warn('Cloud events update background error:', e));
+    } catch (e) {
+      console.warn('Cloud events update failed:', e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.from('events').upsert({
@@ -1295,11 +1376,16 @@ export const eventsService = {
       events.push(updatedEvent);
     }
     saveStoredEvents(events);
+
+    try {
+      window.dispatchEvent(new CustomEvent('naadansmash_event_updated', { detail: updatedEvent }));
+    } catch {}
+
     return true;
   },
 
   /**
-   * Admin event creation.
+   * Admin event creation with cloud sync.
    */
   async createEvent(newEvent: Omit<DatabaseEvent, 'id' | 'created_at'> & { created_at?: string }): Promise<DatabaseEvent> {
     const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `event-${Date.now()}`;
@@ -1309,6 +1395,17 @@ export const eventsService = {
       created_at: newEvent.created_at || new Date().toISOString(),
       available_slots: newEvent.max_participants,
     };
+
+    // 1. Sync to cloud store (/api/events)
+    try {
+      fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event }),
+      }).catch((e) => console.warn('Cloud events create background error:', e));
+    } catch (e) {
+      console.warn('Cloud events create failed:', e);
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -1334,6 +1431,11 @@ export const eventsService = {
     const events = getStoredEvents();
     events.push(event);
     saveStoredEvents(events);
+
+    try {
+      window.dispatchEvent(new CustomEvent('naadansmash_event_updated', { detail: event }));
+    } catch {}
+
     return event;
   },
 
@@ -2155,6 +2257,15 @@ export const eventsService = {
       }
     }
 
+    // Sync event status to cloud store (/api/events)
+    try {
+      fetch('/api/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: eventId, status: 'completed' }),
+      }).catch(() => {});
+    } catch {}
+
     try {
       const events = getStoredEvents();
       const ev = events.find((e) => e.id === eventId);
@@ -2165,6 +2276,10 @@ export const eventsService = {
     } catch (e) {
       console.warn('Local event update exception:', e);
     }
+
+    try {
+      window.dispatchEvent(new CustomEvent('naadansmash_event_updated'));
+    } catch {}
 
     if (purgeScreenshots) {
       const purgeRes = await this.purgeEventScreenshots(eventId);
