@@ -71,11 +71,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       eventsService.getPaymentSettings().then((settings) => {
         setPaymentSettings(settings);
       });
-      const session = eventsService.getPlayerSession();
-      if (session?.phone) {
-        setPhone(session.phone);
-      } else if (playerPhone) {
-        setPhone(playerPhone);
+      const lastPhone = localStorage.getItem('naadansmash_last_phone') || playerPhone || '';
+      if (lastPhone && !phone) {
+        setPhone(lastPhone);
       }
     }
   }, [isOpen, playerPhone]);
@@ -210,7 +208,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       });
 
       if (res.success && res.registrationNumber) {
-        eventsService.recordPlayerTicket(res.registrationNumber, phone, event.id);
+        const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+        eventsService.recordPlayerTicket(res.registrationNumber, cleanPhone, event.id);
+        localStorage.setItem('naadansmash_last_phone', cleanPhone);
         setSuccessData({
           registrationNumber: res.registrationNumber,
           registrationId: res.registrationId,

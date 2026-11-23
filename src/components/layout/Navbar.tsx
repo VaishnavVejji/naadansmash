@@ -1,27 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowUpRight, MessageCircle, Ticket, LogOut } from 'lucide-react';
+import { Menu, X, ArrowUpRight, MessageCircle, Ticket } from 'lucide-react';
 import { BRAND_CONFIG } from '../../data/communityData';
-
-export interface PlayerSession {
-  phone: string;
-  fullPhone: string;
-  verified: boolean;
-}
 
 interface NavbarProps {
   onJoinClick: () => void;
   onMyTicketsClick: () => void;
-  onLoginClick: () => void;
-  playerSession: PlayerSession | null;
-  onPlayerLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
   onJoinClick, 
   onMyTicketsClick,
-  onLoginClick,
-  playerSession,
-  onPlayerLogout,
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -118,54 +106,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Buttons */}
           <div className="hidden lg:flex items-center gap-3 shrink-0">
-            {/* Player My Tickets & Session */}
-            {playerSession ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onMyTicketsClick}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${
-                    isScrolled
-                      ? 'bg-brand-offwhite text-brand-black hover:bg-brand-teal/10 hover:text-brand-teal border border-black/[0.08]'
-                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                  }`}
-                  title="View your session registrations & live status"
-                >
-                  <Ticket className="w-3.5 h-3.5 text-brand-teal" />
-                  <span>My Tickets</span>
-                </button>
-                <div
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono border ${
-                    isScrolled
-                      ? 'bg-brand-teal/10 text-brand-teal border-brand-teal/30'
-                      : 'bg-white/15 text-white border-white/25'
-                  }`}
-                >
-                  <span className="font-semibold">{playerSession.phone}</span>
-                  <button
-                    onClick={onPlayerLogout}
-                    title="Log Out of Participant Portal"
-                    className="p-1 hover:text-red-400 transition-colors"
-                    aria-label="Log Out"
-                  >
-                    <LogOut className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={onLoginClick}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${
-                  isScrolled
-                    ? 'text-brand-charcoal hover:text-brand-teal hover:bg-black/[0.04]'
-                    : 'text-white/90 hover:text-white hover:bg-white/10'
-                }`}
-                title="Sign in with mobile number to view tickets"
-              >
-                <Ticket className="w-4 h-4 text-brand-teal" />
-                <span>My Tickets</span>
-              </button>
-            )}
+            {/* My Tickets Button */}
+            <button
+              onClick={onMyTicketsClick}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${
+                isScrolled
+                  ? 'bg-brand-offwhite text-brand-black hover:bg-brand-teal/10 hover:text-brand-teal border border-black/[0.08]'
+                  : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+              }`}
+              title="Access your match tickets and live confirmation status"
+            >
+              <Ticket className="w-3.5 h-3.5 text-brand-teal" />
+              <span>My Tickets</span>
+            </button>
 
+            {/* WhatsApp Link */}
             <a
               href={`https://wa.me/${BRAND_CONFIG.contacts.whatsapp}?text=Hi%20NAADANSMASH!%20I'd%20love%20to%20know%20more%20about%20joining%20the%20community%20in%20Kochi.`}
               target="_blank"
@@ -181,6 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <MessageCircle className="w-5 h-5" />
             </a>
 
+            {/* Direct Join CTA */}
             <button
               onClick={onJoinClick}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand-teal text-white font-heading font-semibold text-xs tracking-wider uppercase shadow-sm hover:bg-[#126f8c] transition-all duration-200 transform hover:-translate-y-0.5 focus:ring-2 focus:ring-brand-teal/40"
@@ -190,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Mobile / Tablet Menu Trigger */}
+          {/* Mobile / Tablet Quick Triggers */}
           <div className="flex lg:hidden items-center gap-2">
             <button
               onClick={onMyTicketsClick}
@@ -240,36 +196,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
             
             <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
-              {/* Player Status / Login */}
-              {playerSession ? (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-mono text-white/90">
-                      Logged in: <strong className="text-white">+91 {playerSession.phone}</strong>
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onPlayerLogout();
-                    }}
-                    className="text-xs text-rose-400 hover:text-rose-300 font-semibold uppercase"
-                  >
-                    Log Out
-                  </button>
-                </div>
-              ) : null}
-
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onMyTicketsClick();
                 }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-white/10 border border-white/15 text-white font-heading font-semibold text-xs uppercase tracking-wider hover:bg-white/15"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-full bg-white/10 border border-white/15 text-white font-heading font-semibold text-xs uppercase tracking-wider hover:bg-white/15"
               >
                 <Ticket className="w-4 h-4 text-brand-teal" />
-                <span>{playerSession ? 'View My Tickets & Status' : 'Sign In / View Tickets'}</span>
+                <span>View My Tickets & Status</span>
               </button>
 
               <button

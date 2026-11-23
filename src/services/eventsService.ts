@@ -1,7 +1,6 @@
 import { DatabaseEvent, RegistrationPayload, PaymentSettings, ParticipantRegistrationStatus } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { emailService, EmailSendResult } from './emailService';
-import { smsService } from './smsService';
 
 // Seed events matching the new PostgreSQL schema
 const HISTORICAL_EVENT_1: DatabaseEvent = {
@@ -743,16 +742,12 @@ export const eventsService = {
     }
 
     const fullPhone = `+91${cleanPhone}`;
-    let supabaseSent = false;
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.auth.signInWithOtp({
+        await supabase.auth.signInWithOtp({
           phone: fullPhone,
         });
-        if (!error) {
-          supabaseSent = true;
-        }
       } catch (err) {
         console.warn('Supabase player signInWithOtp:', err);
       }
@@ -761,9 +756,6 @@ export const eventsService = {
     // Generate 6-digit session OTP
     const secureCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = Date.now() + 10 * 60 * 1000;
-
-    // Dispatch cellular SMS if provider configured
-    const smsResult = await smsService.sendSmsOtp(cleanPhone, secureCode);
 
     const payload = {
       phone: cleanPhone,
@@ -775,18 +767,10 @@ export const eventsService = {
       sessionStorage.setItem('naadansmash_pending_player_otp', JSON.stringify(payload));
     } catch {}
 
-    const whatsAppUrl = smsService.getWhatsAppDeliveryUrl(cleanPhone, secureCode);
-    const smsUrl = smsService.getNativeSmsUrl(cleanPhone, secureCode);
-
     return {
       success: true,
-      message: (supabaseSent || smsResult.success)
-        ? `SMS OTP sent to ${fullPhone}. Please check your phone messages.`
-        : `Verification code ready for ${fullPhone}.`,
+      message: `Code generated for ${fullPhone}.`,
       formattedPhone: fullPhone,
-      whatsAppUrl,
-      smsUrl,
-      deliveredViaSms: supabaseSent || smsResult.success,
       testOtp: secureCode,
     };
   },

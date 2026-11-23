@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navbar, PlayerSession } from './components/layout/Navbar';
+import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { Hero } from './components/sections/Hero';
 import { About } from './components/sections/About';
@@ -13,7 +13,6 @@ import { LightboxModal } from './components/ui/LightboxModal';
 import { AlertModal } from './components/ui/AlertModal';
 import { LookupRegistrationModal } from './components/ui/LookupRegistrationModal';
 import { AdminPortalModal } from './components/ui/AdminPortalModal';
-import { PlayerAuthModal } from './components/ui/PlayerAuthModal';
 import { DatabaseEvent, GalleryImage } from './types';
 import { GALLERY_IMAGES } from './data/galleryData';
 import { eventsService } from './services/eventsService';
@@ -26,11 +25,6 @@ export const App: React.FC = () => {
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
 
-  // Player session & authentication
-  const [playerSession, setPlayerSession] = useState<PlayerSession | null>(() => eventsService.getPlayerSession());
-  const [isPlayerAuthOpen, setIsPlayerAuthOpen] = useState(false);
-  const [authIntent, setAuthIntent] = useState<'register' | 'tickets' | null>(null);
-
   // Key to trigger event refresh
   const [eventUpdateKey, setEventUpdateKey] = useState(0);
 
@@ -39,18 +33,21 @@ export const App: React.FC = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  // Registration & Ticket Handlers
-  const handleOpenRegistration = (event?: DatabaseEvent) => {
+  // Direct Registration & Ticket Handlers
+  const handleOpenRegistration = async (event?: DatabaseEvent) => {
     if (event) {
       setSelectedEvent(event);
-      // Require player phone login before registering
-      if (!playerSession) {
-        setAuthIntent('register');
-        setIsPlayerAuthOpen(true);
-      } else {
-        setIsRegisterOpen(true);
-      }
+      setIsRegisterOpen(true);
     } else {
+      try {
+        const events = await eventsService.getEvents();
+        const active = events.find((e: DatabaseEvent) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.event_date >= '2026-11-22')) || events[0];
+        if (active) {
+          setSelectedEvent(active);
+          setIsRegisterOpen(true);
+          return;
+        }
+      } catch {}
       const eventsElement = document.getElementById('events');
       if (eventsElement) {
         eventsElement.scrollIntoView({ behavior: 'smooth' });
@@ -59,27 +56,7 @@ export const App: React.FC = () => {
   };
 
   const handleOpenMyTickets = () => {
-    if (!playerSession) {
-      setAuthIntent('tickets');
-      setIsPlayerAuthOpen(true);
-    } else {
-      setIsLookupOpen(true);
-    }
-  };
-
-  const handlePlayerAuthSuccess = (session: PlayerSession) => {
-    setPlayerSession(session);
-    if (authIntent === 'register' && selectedEvent) {
-      setIsRegisterOpen(true);
-    } else {
-      setIsLookupOpen(true);
-    }
-    setAuthIntent(null);
-  };
-
-  const handlePlayerLogout = () => {
-    eventsService.playerLogout();
-    setPlayerSession(null);
+    setIsLookupOpen(true);
   };
 
   const handleOpenGalleryLightbox = (_image: GalleryImage, index: number, customList?: GalleryImage[]) => {
@@ -105,16 +82,10 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-offwhite text-brand-black selection:bg-brand-teal selection:text-brand-white">
-      {/* Sticky Editorial Navbar */}
+      {/* Editorial Navbar with Direct Registration & Ticket Access */}
       <Navbar 
         onJoinClick={() => handleOpenRegistration()} 
         onMyTicketsClick={handleOpenMyTickets}
-        onLoginClick={() => {
-          setAuthIntent('tickets');
-          setIsPlayerAuthOpen(true);
-        }}
-        playerSession={playerSession}
-        onPlayerLogout={handlePlayerLogout}
       />
 
       {/* Main Content Sections */}
@@ -149,24 +120,8 @@ export const App: React.FC = () => {
         <Contact />
       </main>
 
-      {/* G. FOOTER */}
+      {/* G. FOOTER with Discreet Admin / Organizer Access */}
       <Footer onAdminClick={() => setIsAdminPortalOpen(true)} />
-
-      {/* Player Phone Verification Modal */}
-      <PlayerAuthModal
-        isOpen={isPlayerAuthOpen}
-        onClose={() => {
-          setIsPlayerAuthOpen(false);
-          setAuthIntent(null);
-        }}
-        onSuccess={handlePlayerAuthSuccess}
-        title={authIntent === 'register' ? 'Phone Verification Required' : 'Sign In with Mobile'}
-        subtitle={
-          authIntent === 'register'
-            ? 'Verify your mobile number to reserve your spot and link your ticket to your account.'
-            : 'Enter your 10-digit number to automatically view your session registrations and match statuses.'
-        }
-      />
 
       {/* 2-Step Registration & Approval Modal */}
       <RegistrationModal
@@ -176,7 +131,6 @@ export const App: React.FC = () => {
         onSuccess={() => {
           setEventUpdateKey((prev) => prev + 1);
         }}
-        playerPhone={playerSession?.phone}
       />
 
       {/* Lightbox Modal */}
@@ -195,18 +149,17 @@ export const App: React.FC = () => {
         onClose={() => setIsAlertOpen(false)}
       />
 
-      {/* My Tickets & Status Modal */}
+      {/* My Tickets & Status Modal (Phone-Driven Lookup) */}
       <LookupRegistrationModal
         isOpen={isLookupOpen}
         onClose={() => setIsLookupOpen(false)}
-        playerPhone={playerSession?.phone}
         onJoinClick={() => {
           setIsLookupOpen(false);
           handleOpenRegistration();
         }}
       />
 
-      {/* Organizer & Admin Portal Modal */}
+      {/* Organizer & Admin Portal Modal (Hidden & Authenticated) */}
       <AdminPortalModal
         isOpen={isAdminPortalOpen}
         onClose={() => setIsAdminPortalOpen(false)}
