@@ -58,6 +58,33 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
   }, [paymentSettings, event]);
 
+  const gpayUri = useMemo(() => {
+    if (!paymentSettings || !event) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name);
+    const am = encodeURIComponent(event.registration_fee.toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
+    return `tez://upi/pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, event]);
+
+  const phonepeUri = useMemo(() => {
+    if (!paymentSettings || !event) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name);
+    const am = encodeURIComponent(event.registration_fee.toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
+    return `phonepe://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, event]);
+
+  const paytmUri = useMemo(() => {
+    if (!paymentSettings || !event) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name);
+    const am = encodeURIComponent(event.registration_fee.toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
+    return `paytmmp://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, event]);
+
   useEffect(() => {
     if (isOpen) {
       eventsService.getPaymentSettings().then((settings) => {
@@ -442,17 +469,52 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     </div>
                   </div>
 
-                  {/* 1-Tap Open UPI App Button */}
-                  <div className="pt-1">
+                  {/* 1-Tap Direct UPI App Payment on Mobile */}
+                  <div className="pt-2 border-t border-black/[0.06] space-y-2">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-charcoal">
+                      1-Tap Direct Payment on Phone:
+                    </div>
+
+                    {/* Primary Google Pay Direct Launcher */}
                     <a
-                      href={upiPaymentUri}
-                      className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-brand-teal to-[#0f4c5c] hover:from-[#126f8c] hover:to-[#0d3f4d] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                      href={gpayUri}
+                      className="w-full inline-flex items-center justify-between py-3 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                      title="Directly opens Google Pay app"
                     >
-                      <Smartphone className="w-4 h-4 text-emerald-300" />
-                      <span>Open UPI App to Pay ₹{event.registration_fee} (GPay / PhonePe / Paytm)</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-white" />
+                        <span>Pay ₹{event.registration_fee} with Google Pay (GPay)</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-semibold bg-white/20 px-2.5 py-0.5 rounded-full">
+                        Open GPay →
+                      </span>
                     </a>
-                    <p className="text-[10px] text-center text-brand-muted mt-1.5 font-mono">
+
+                    {/* Quick App Selector: PhonePe, Paytm, Any UPI */}
+                    <div className="grid grid-cols-3 gap-2 text-center pt-0.5">
+                      <a
+                        href={phonepeUri}
+                        className="py-2.5 px-2 rounded-xl bg-[#5f259f] hover:bg-[#4d1d82] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                        title="Directly opens PhonePe app"
+                      >
+                        🟣 PhonePe
+                      </a>
+                      <a
+                        href={paytmUri}
+                        className="py-2.5 px-2 rounded-xl bg-[#002e6e] hover:bg-[#002252] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                        title="Directly opens Paytm app"
+                      >
+                        🔷 Paytm
+                      </a>
+                      <a
+                        href={upiPaymentUri}
+                        className="py-2.5 px-2 rounded-xl bg-brand-charcoal hover:bg-black text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                        title="Open device default UPI app chooser"
+                      >
+                        ⚡ Any UPI
+                      </a>
+                    </div>
+                    <p className="text-[10px] text-center text-brand-muted mt-1 font-mono">
                       Paying to <strong>{paymentSettings.upi_id}</strong> ({paymentSettings.account_display_name})
                     </p>
                   </div>
@@ -778,15 +840,48 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                           </span>
                         </div>
 
-                        {/* 1-Tap Open in UPI App Button */}
-                        <a
-                          href={upiPaymentUri}
-                          className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-teal to-[#0f4c5c] hover:from-[#126f8c] hover:to-[#0d3f4d] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98] mt-1"
-                        >
-                          <Smartphone className="w-4 h-4 text-emerald-300" />
-                          <span>Pay ₹{event.registration_fee} via UPI App (GPay / PhonePe / Paytm)</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </a>
+                        {/* 1-Tap Direct UPI App Payment on Mobile */}
+                        <div className="pt-2 border-t border-black/[0.06] space-y-2">
+                          {/* Primary Google Pay Direct Launcher */}
+                          <a
+                            href={gpayUri}
+                            className="w-full inline-flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                            title="Directly opens Google Pay app"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Smartphone className="w-4 h-4 text-white" />
+                              <span>Pay ₹{event.registration_fee} with Google Pay</span>
+                            </div>
+                            <span className="text-[10px] font-mono font-semibold bg-white/20 px-2 py-0.5 rounded-full">
+                              Open GPay →
+                            </span>
+                          </a>
+
+                          {/* Quick App Choices */}
+                          <div className="grid grid-cols-3 gap-1.5 text-center">
+                            <a
+                              href={phonepeUri}
+                              className="py-2 px-1.5 rounded-lg bg-[#5f259f] hover:bg-[#4d1d82] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                              title="Open PhonePe app"
+                            >
+                              🟣 PhonePe
+                            </a>
+                            <a
+                              href={paytmUri}
+                              className="py-2 px-1.5 rounded-lg bg-[#002e6e] hover:bg-[#002252] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                              title="Open Paytm app"
+                            >
+                              🔷 Paytm
+                            </a>
+                            <a
+                              href={upiPaymentUri}
+                              className="py-2 px-1.5 rounded-lg bg-brand-charcoal hover:bg-black text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                              title="Open device UPI chooser"
+                            >
+                              ⚡ Any App
+                            </a>
+                          </div>
+                        </div>
                       </div>
                     </div>
 

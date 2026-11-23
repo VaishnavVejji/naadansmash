@@ -14,8 +14,7 @@ import {
   Upload, 
   ShieldCheck, 
   FileText,
-  Smartphone,
-  ArrowRight
+  Smartphone
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { eventsService } from '../../services/eventsService';
@@ -197,6 +196,42 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
       ? 'payment_submitted' 
       : 'received'
   );
+
+  const upiPaymentUri = React.useMemo(() => {
+    if (!paymentSettings?.upi_id || !result) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
+    const am = encodeURIComponent((result.registration_fee || 250).toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
+    return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, result]);
+
+  const gpayUri = React.useMemo(() => {
+    if (!paymentSettings?.upi_id || !result) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
+    const am = encodeURIComponent((result.registration_fee || 250).toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
+    return `tez://upi/pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, result]);
+
+  const phonepeUri = React.useMemo(() => {
+    if (!paymentSettings?.upi_id || !result) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
+    const am = encodeURIComponent((result.registration_fee || 250).toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
+    return `phonepe://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, result]);
+
+  const paytmUri = React.useMemo(() => {
+    if (!paymentSettings?.upi_id || !result) return '';
+    const pa = encodeURIComponent(paymentSettings.upi_id);
+    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
+    const am = encodeURIComponent((result.registration_fee || 250).toString());
+    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
+    return `paytmmp://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  }, [paymentSettings, result]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-brand-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fade-in">
@@ -500,16 +535,51 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                     </div>
                   </div>
 
-                  {/* 1-Tap Open UPI App Button */}
-                  <div className="pt-2 border-t border-black/[0.06]">
+                  {/* 1-Tap Direct UPI App Payment on Mobile */}
+                  <div className="pt-2 border-t border-black/[0.06] space-y-2">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-charcoal">
+                      1-Tap Direct Payment on Phone:
+                    </div>
+
+                    {/* Primary Google Pay Direct Launcher */}
                     <a
-                      href={`upi://pay?pa=${encodeURIComponent(paymentSettings.upi_id)}&pn=${encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu')}&am=${result.registration_fee || 250}&cu=INR&tn=${encodeURIComponent(`NAADANSMASH ${result.registration_number}`)}`}
-                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-teal to-[#0f4c5c] hover:from-[#126f8c] hover:to-[#0d3f4d] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                      href={gpayUri}
+                      className="w-full inline-flex items-center justify-between py-2.5 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
+                      title="Directly opens Google Pay app"
                     >
-                      <Smartphone className="w-4 h-4 text-emerald-300" />
-                      <span>Open UPI App to Pay ₹{result.registration_fee || 250} (GPay / PhonePe / Paytm)</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-white" />
+                        <span>Pay ₹{result.registration_fee || 250} with Google Pay</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-semibold bg-white/20 px-2 py-0.5 rounded-full">
+                        Open GPay →
+                      </span>
                     </a>
+
+                    {/* Quick App Choices */}
+                    <div className="grid grid-cols-3 gap-2 text-center pt-0.5">
+                      <a
+                        href={phonepeUri}
+                        className="py-2.5 px-2 rounded-xl bg-[#5f259f] hover:bg-[#4d1d82] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                        title="Directly opens PhonePe app"
+                      >
+                        🟣 PhonePe
+                      </a>
+                      <a
+                        href={paytmUri}
+                        className="py-2.5 px-2 rounded-xl bg-[#002e6e] hover:bg-[#002252] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                        title="Directly opens Paytm app"
+                      >
+                        🔷 Paytm
+                      </a>
+                      <a
+                        href={upiPaymentUri}
+                        className="py-2.5 px-2 rounded-xl bg-brand-charcoal hover:bg-black text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
+                        title="Open device UPI chooser"
+                      >
+                        ⚡ Any App
+                      </a>
+                    </div>
                     <p className="text-[10px] text-center text-brand-muted mt-1 font-mono">
                       Paying to <strong>{paymentSettings.upi_id}</strong> ({paymentSettings.account_display_name})
                     </p>
