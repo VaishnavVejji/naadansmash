@@ -144,14 +144,18 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
           </div>
           <div className="flex items-center gap-6">
             {onAdminClick && (
-              <button
-                onClick={onAdminClick}
+              <a
+                href="/admin"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onAdminClick();
+                }}
                 className="inline-flex items-center gap-1.5 text-white/50 hover:text-white transition-colors cursor-pointer"
-                title="Organizer and Court Management Portal"
+                title="Dedicated Organizer and Match Management Portal"
               >
                 <Lock className="w-3 h-3 text-brand-teal" />
-                <span>Admin Portal</span>
-              </button>
+                <span>Admin Website</span>
+              </a>
             )}
             <span>Premium Sports Community</span>
             <button

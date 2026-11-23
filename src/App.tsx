@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { Hero } from './components/sections/Hero';
@@ -12,18 +12,60 @@ import { RegistrationModal } from './components/ui/RegistrationModal';
 import { LightboxModal } from './components/ui/LightboxModal';
 import { AlertModal } from './components/ui/AlertModal';
 import { LookupRegistrationModal } from './components/ui/LookupRegistrationModal';
-import { AdminPortalModal } from './components/ui/AdminPortalModal';
+import { AdminPortalPage } from './pages/AdminPortalPage';
 import { DatabaseEvent, GalleryImage } from './types';
 import { GALLERY_IMAGES } from './data/galleryData';
 import { eventsService } from './services/eventsService';
 
 export const App: React.FC = () => {
-  // Modal states
+  // Route state: Check if user is accessing the Admin Portal website (/admin, /#admin, or ?portal=admin)
+  const checkIsAdminRoute = () => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    return (
+      path.startsWith('/admin') ||
+      path.startsWith('/portal') ||
+      hash === '#admin' ||
+      hash.startsWith('#/admin') ||
+      search.includes('portal=admin') ||
+      search.includes('view=admin')
+    );
+  };
+
+  const [isAdminView, setIsAdminView] = useState<boolean>(checkIsAdminRoute);
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setIsAdminView(checkIsAdminRoute());
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
+
+  const navigateToAdmin = () => {
+    window.history.pushState(null, '', '/admin');
+    setIsAdminView(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToPublic = () => {
+    window.history.pushState(null, '', '/');
+    setIsAdminView(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Modal states for Public Website
   const [selectedEvent, setSelectedEvent] = useState<DatabaseEvent | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
-  const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
 
   // Key to trigger event refresh
   const [eventUpdateKey, setEventUpdateKey] = useState(0);
@@ -80,6 +122,21 @@ export const App: React.FC = () => {
     }
   };
 
+  // -------------------------------------------------------------
+  // RENDER DEDICATED ADMIN PORTAL WEBSITE (/admin)
+  // -------------------------------------------------------------
+  if (isAdminView) {
+    return (
+      <AdminPortalPage
+        onBackToPublicSite={navigateToPublic}
+        onEventUpdated={() => setEventUpdateKey((prev) => prev + 1)}
+      />
+    );
+  }
+
+  // -------------------------------------------------------------
+  // RENDER PUBLIC PARTICIPANT WEBSITE (/)
+  // -------------------------------------------------------------
   return (
     <div className="min-h-screen flex flex-col bg-brand-offwhite text-brand-black selection:bg-brand-teal selection:text-brand-white">
       {/* Editorial Navbar with Direct Registration & Ticket Access */}
@@ -120,8 +177,8 @@ export const App: React.FC = () => {
         <Contact />
       </main>
 
-      {/* G. FOOTER with Discreet Admin / Organizer Access */}
-      <Footer onAdminClick={() => setIsAdminPortalOpen(true)} />
+      {/* G. FOOTER with Link to Standalone Admin Portal Website */}
+      <Footer onAdminClick={navigateToAdmin} />
 
       {/* 2-Step Registration & Approval Modal */}
       <RegistrationModal
@@ -156,15 +213,6 @@ export const App: React.FC = () => {
         onJoinClick={() => {
           setIsLookupOpen(false);
           handleOpenRegistration();
-        }}
-      />
-
-      {/* Organizer & Admin Portal Modal (Hidden & Authenticated) */}
-      <AdminPortalModal
-        isOpen={isAdminPortalOpen}
-        onClose={() => setIsAdminPortalOpen(false)}
-        onEventUpdated={() => {
-          setEventUpdateKey((prev) => prev + 1);
         }}
       />
     </div>

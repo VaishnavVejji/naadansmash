@@ -1479,24 +1479,31 @@ export const eventsService = {
   },
 
   /**
-   * Admin Authentication via Admin Phone Number + Password
+   * Admin Authentication via Admin Username / Phone Number + Password
    * Convenient, direct login without OTP hoops or email rate limits.
    */
-  async adminPhonePasswordLogin(phoneNumber: string, password: string): Promise<{
+  async adminPhonePasswordLogin(identifier: string, password: string): Promise<{
     success: boolean;
     message: string;
     role?: string;
     user?: any;
   }> {
-    const rawDigits = phoneNumber.replace(/\D/g, '');
-    const cleanPhone = rawDigits.length > 10 ? rawDigits.slice(-10) : rawDigits;
-    const cleanPassword = password.trim();
+    const rawInput = (identifier || '').trim();
+    const cleanPassword = (password || '').trim();
 
-    if (!cleanPhone || cleanPhone.length !== 10) {
-      return { success: false, message: 'Please enter a valid 10-digit organizer mobile number.' };
+    if (!rawInput) {
+      return { success: false, message: 'Please enter organizer mobile number or username.' };
     }
     if (!cleanPassword) {
       return { success: false, message: 'Please enter the organizer password.' };
+    }
+
+    const isUsername = ['admin', 'organizer', 'superadmin', 'lead'].includes(rawInput.toLowerCase());
+    const rawDigits = rawInput.replace(/\D/g, '');
+    const cleanPhone = isUsername ? '8304883872' : (rawDigits.length > 10 ? rawDigits.slice(-10) : rawDigits);
+
+    if (!isUsername && (!cleanPhone || cleanPhone.length !== 10)) {
+      return { success: false, message: 'Please enter a valid 10-digit mobile number or username "admin".' };
     }
 
     // 1. Try cloud auth endpoint (/api/admin-auth)
@@ -1504,7 +1511,7 @@ export const eventsService = {
       const res = await fetch('/api/admin-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, password: cleanPassword }),
+        body: JSON.stringify({ username: rawInput, phone: cleanPhone, password: cleanPassword }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -1519,16 +1526,18 @@ export const eventsService = {
 
     // 2. Validate against configured or master organizer credentials
     const storedAdmin = this.getStoredAdminCredentials();
-    const isConfigPhone = cleanPhone === storedAdmin.phone || cleanPhone === '8304883872' || cleanPhone === '9876543210';
+    const isConfigPhone = isUsername || cleanPhone === storedAdmin.phone || cleanPhone === '8304883872' || cleanPhone === '9876543210';
     const isConfigPassword = cleanPassword === storedAdmin.password || cleanPassword === 'naadansmash2026' || cleanPassword === 'admin123';
 
     if (isConfigPhone && isConfigPassword) {
+      const displayPhone = cleanPhone && cleanPhone.length === 10 ? cleanPhone : storedAdmin.phone;
       const session = {
-        userId: `admin-${cleanPhone}`,
-        phone: cleanPhone,
+        userId: `admin-${displayPhone}`,
+        phone: displayPhone,
+        username: isUsername ? rawInput.toLowerCase() : 'admin',
         email: 'organizer@naadansmash.com',
         role: 'organizer',
-        fullName: `Organizer (+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)})`,
+        fullName: `Organizer (+91 ${displayPhone.slice(0, 5)} ${displayPhone.slice(5)})`,
         authMethod: 'phone_password',
         loggedInAt: new Date().toISOString(),
       };
@@ -1543,12 +1552,14 @@ export const eventsService = {
 
     // 3. Fallback master credentials for organizers
     if (cleanPassword === 'naadansmash2026' || cleanPassword === 'admin123') {
+      const displayPhone = cleanPhone && cleanPhone.length === 10 ? cleanPhone : '8304883872';
       const session = {
-        userId: `admin-${cleanPhone}`,
-        phone: cleanPhone,
+        userId: `admin-${displayPhone}`,
+        phone: displayPhone,
+        username: isUsername ? rawInput.toLowerCase() : 'admin',
         email: 'organizer@naadansmash.com',
         role: 'organizer',
-        fullName: `Organizer (+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)})`,
+        fullName: `Organizer (+91 ${displayPhone.slice(0, 5)} ${displayPhone.slice(5)})`,
         authMethod: 'phone_password',
         loggedInAt: new Date().toISOString(),
       };
@@ -1563,7 +1574,7 @@ export const eventsService = {
 
     return {
       success: false,
-      message: 'Invalid organizer mobile number or password. Check credentials and try again.',
+      message: 'Invalid organizer credentials. Use phone (8304883872) or username (admin) and organizer password.',
     };
   },
 
@@ -1654,7 +1665,7 @@ export const eventsService = {
     localStorage.removeItem('naadansmash_admin_session');
   },
 
-  getAdminSession(): { userId: string; email: string; role: string; fullName: string } | null {
+  getAdminSession(): { userId: string; email: string; role: string; fullName: string; phone?: string; username?: string; id?: string } | null {
     try {
       const raw = localStorage.getItem('naadansmash_admin_session');
       if (raw) return JSON.parse(raw);

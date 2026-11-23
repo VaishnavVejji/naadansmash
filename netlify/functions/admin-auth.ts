@@ -56,17 +56,16 @@ export default async (req: Request) => {
     }
 
     // -------------------------------------------------------------
-    // POST: Authenticate Admin with Phone + Password
+    // POST: Authenticate Admin with Username / Phone + Password
     // -------------------------------------------------------------
     if (req.method === 'POST') {
       const body = await req.json();
-      const rawPhone = (body.phone || '').replace(/\D/g, '');
-      const cleanPhone = rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone;
+      const rawInput = (body.username || body.phone || body.login || '').trim();
       const password = (body.password || '').trim();
 
-      if (!cleanPhone || !password) {
+      if (!rawInput || !password) {
         return new Response(
-          JSON.stringify({ success: false, message: 'Please enter both organizer phone number and password.' }),
+          JSON.stringify({ success: false, message: 'Please enter both organizer username/phone and password.' }),
           { status: 400, headers: CORS_HEADERS }
         );
       }
@@ -79,8 +78,13 @@ export default async (req: Request) => {
         } catch {}
       }
 
+      const isUsernameMatch = ['admin', 'organizer', 'superadmin', 'lead'].includes(rawInput.toLowerCase());
+      const rawDigits = rawInput.replace(/\D/g, '');
+      const cleanPhone = rawDigits.length > 10 ? rawDigits.slice(-10) : rawDigits;
       const cleanConfigPhone = (activeConfig.phone || '').replace(/\D/g, '').slice(-10);
+
       const isPhoneValid =
+        isUsernameMatch ||
         cleanPhone === cleanConfigPhone ||
         activeConfig.fallbackPhones.some((p) => p.replace(/\D/g, '').slice(-10) === cleanPhone);
 
@@ -89,12 +93,14 @@ export default async (req: Request) => {
         activeConfig.fallbackPasswords.includes(password);
 
       if (isPhoneValid && isPasswordValid) {
+        const displayPhone = cleanPhone && cleanPhone.length === 10 ? cleanPhone : activeConfig.phone;
         const session = {
-          userId: `admin-${cleanPhone}`,
-          phone: cleanPhone,
+          userId: `admin-${displayPhone}`,
+          phone: displayPhone,
+          username: isUsernameMatch ? rawInput.toLowerCase() : 'admin',
           email: 'organizer@naadansmash.com',
           role: 'organizer',
-          fullName: `Organizer (+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)})`,
+          fullName: `Admin Organizer (+91 ${displayPhone.slice(0, 5)} ${displayPhone.slice(5)})`,
           loggedInAt: new Date().toISOString(),
         };
 
@@ -112,7 +118,7 @@ export default async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Invalid organizer phone number or password. Please verify and try again.',
+          message: 'Invalid organizer credentials. Use phone (8304883872) or username (admin) and organizer password.',
         }),
         { status: 401, headers: CORS_HEADERS }
       );
