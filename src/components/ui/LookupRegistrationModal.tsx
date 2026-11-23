@@ -14,7 +14,8 @@ import {
   Upload, 
   ShieldCheck, 
   FileText,
-  Smartphone
+  Smartphone,
+  ArrowRight
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { eventsService } from '../../services/eventsService';
@@ -27,16 +28,22 @@ import {
 interface LookupRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  playerPhone?: string;
+  onJoinClick?: () => void;
 }
 
 export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = ({
   isOpen,
   onClose,
+  playerPhone,
+  onJoinClick,
 }) => {
   const [regNumber, setRegNumber] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(playerPhone || '');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
+  const [userTickets, setUserTickets] = useState<any[]>([]);
+  const [showManualSearch, setShowManualSearch] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
 
@@ -54,8 +61,23 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
   useEffect(() => {
     if (isOpen) {
       eventsService.getPaymentSettings().then(setPaymentSettings);
+      const session = eventsService.getPlayerSession();
+      const currentPhone = playerPhone || session?.phone || '';
+      if (currentPhone) {
+        setPhone(currentPhone);
+        setLoading(true);
+        eventsService.getUserTickets(currentPhone).then((tickets) => {
+          setLoading(false);
+          setUserTickets(tickets);
+          if (tickets.length > 0) {
+            setResult(tickets[0]);
+          }
+        }).catch(() => {
+          setLoading(false);
+        });
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, playerPhone]);
 
   if (!isOpen) return null;
 
@@ -277,6 +299,25 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
              * RESULT VIEW: EXPLICIT 4-STATE PARTICIPANT NOTIFICATION EXPERIENCES
              * ========================================================================= */
             <div className="space-y-5 animate-fade-in">
+              {/* Multi-Ticket Selector */}
+              {userTickets.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-2">
+                  <span className="text-[10px] font-mono text-brand-muted uppercase shrink-0 font-bold">Your Passes:</span>
+                  {userTickets.map((t, idx) => (
+                    <button
+                      key={t.registration_number || idx}
+                      onClick={() => setResult(t)}
+                      className={`px-3 py-1 rounded-lg text-xs font-mono font-bold uppercase transition-all shrink-0 ${
+                        result.registration_number === t.registration_number
+                          ? 'bg-brand-black text-white shadow-xs'
+                          : 'bg-brand-offwhite text-brand-charcoal hover:bg-black/10'
+                      }`}
+                    >
+                      {t.registration_number}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* STATUS-SPECIFIC HERO BANNER */}
 
               {/* 1. REGISTRATION RECEIVED */}
@@ -729,6 +770,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
               <button
                 onClick={() => {
                   setResult(null);
+                  setShowManualSearch(true);
                   setInlineSubmitSuccess('');
                   setInlineSubmitError('');
                 }}
@@ -737,14 +779,65 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                 ← Look Up Another Registration
               </button>
             </div>
+          ) : loading ? (
+            <div className="py-16 text-center text-brand-muted font-mono text-xs uppercase tracking-widest animate-pulse">
+              Retrieving your session match passes...
+            </div>
+          ) : phone && userTickets.length === 0 && !showManualSearch ? (
+            <div className="text-center py-8 animate-fade-in">
+              <div className="w-14 h-14 rounded-2xl bg-brand-offwhite border border-black/[0.08] text-brand-teal flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <FileText className="w-7 h-7" />
+              </div>
+              <h4 className="font-heading font-extrabold text-xl text-brand-black uppercase">
+                No Tickets Found for +91 {phone}
+              </h4>
+              <p className="text-xs text-brand-charcoal/80 mt-1 max-w-sm mx-auto leading-relaxed mb-6">
+                You haven't reserved a spot for this session yet. Lock your spot now!
+              </p>
+              {onJoinClick && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onJoinClick();
+                  }}
+                  className="inline-flex items-center gap-2 py-3.5 px-7 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-semibold text-xs uppercase tracking-wider shadow-sm transition-all"
+                >
+                  <span>Join Upcoming Session</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+              <div className="pt-6 mt-6 border-t border-black/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setShowManualSearch(true)}
+                  className="text-xs font-mono text-brand-teal hover:underline"
+                >
+                  Have an existing registration number from another session? Search manually →
+                </button>
+              </div>
+            </div>
           ) : (
             /* =========================================================================
              * LOOKUP FORM VIEW (SECURE 1-TO-1 LOOKUP)
              * ========================================================================= */
             <form onSubmit={handleLookup} className="space-y-4">
-              <p className="text-xs text-brand-charcoal/80 mb-5 leading-relaxed">
-                Enter your unique Registration Number and your WhatsApp phone number to securely access your confirmation and attendance status.
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-brand-charcoal/80 leading-relaxed">
+                  Enter your unique Registration Number and WhatsApp phone number to access your ticket.
+                </p>
+                {userTickets.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowManualSearch(false);
+                      setResult(userTickets[0]);
+                    }}
+                    className="text-[11px] font-mono text-brand-teal hover:underline shrink-0"
+                  >
+                    View My Passes →
+                  </button>
+                )}
+              </div>
 
               <div>
                 <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1">

@@ -6,34 +6,26 @@ import {
   Users, 
   ArrowRight, 
   Bell, 
-  Edit3, 
   Check, 
-  Search, 
-  Lock
+  Search
 } from 'lucide-react';
-import { DatabaseEvent, GalleryImage } from '../../types';
+import { DatabaseEvent } from '../../types';
 import { eventsService } from '../../services/eventsService';
 import { BRAND_CONFIG } from '../../data/communityData';
 
 interface EventsProps {
   onRegisterClick: (event: DatabaseEvent) => void;
   onOpenAlertModal: () => void;
-  onOpenOrganizerEditModal: (event: DatabaseEvent) => void;
   onOpenLookupModal: () => void;
-  onOpenAdminModal?: () => void;
-  onOpenPhotoLightbox?: (images: GalleryImage[], index: number) => void;
 }
 
 export const Events: React.FC<EventsProps> = ({ 
   onRegisterClick, 
   onOpenAlertModal,
-  onOpenOrganizerEditModal,
   onOpenLookupModal,
-  onOpenAdminModal
 }) => {
   const [events, setEvents] = useState<DatabaseEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [forceComingSoon, setForceComingSoon] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -51,16 +43,13 @@ export const Events: React.FC<EventsProps> = ({
     }
   };
 
-  const upcomingEvents = forceComingSoon 
-    ? [] 
-    : events.filter(
-        (e) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.event_date >= '2026-11-22')
-      );
+  const upcomingEvents = events.filter(
+    (e) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.event_date >= '2026-11-22')
+  );
 
   const inProgressEvent = events.find(
     (e) => !e.isHistorical && (e.status === 'in_progress' || e.status === 'draft')
   );
-  const targetEditEvent = upcomingEvents[0] || inProgressEvent;
 
   return (
     <section id="events" className="py-16 sm:py-20 bg-white relative border-t border-b border-black/[0.06]">
@@ -83,50 +72,20 @@ export const Events: React.FC<EventsProps> = ({
 
           {/* Controls & Quick Actions */}
           <div className="mt-8 md:mt-0 flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-offwhite border border-black/[0.08] text-xs font-mono text-brand-charcoal">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-offwhite border border-black/[0.08] text-xs font-mono text-brand-charcoal">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="font-semibold uppercase tracking-wider text-brand-black">Upcoming Session</span>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Action: My Ticket */}
             <button
               onClick={onOpenLookupModal}
-              className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider px-3 py-2 rounded-lg border border-black/[0.12] hover:bg-brand-offwhite text-brand-black transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider px-4 py-2 rounded-xl border border-black/[0.12] hover:bg-brand-offwhite text-brand-black transition-colors font-semibold shadow-2xs"
               title="Access your registration confirmation and details"
             >
               <Search className="w-3.5 h-3.5 text-brand-teal" />
               <span>My Ticket</span>
             </button>
-
-            {onOpenAdminModal && (
-              <button
-                onClick={onOpenAdminModal}
-                className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider px-3 py-2 rounded-lg bg-brand-black text-white hover:bg-brand-charcoal transition-colors"
-                title="Organizers & Coaches: Player court check-in, attendance & payment verification"
-              >
-                <Lock className="w-3.5 h-3.5 text-brand-teal" />
-                <span>Court Check-in</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setForceComingSoon(!forceComingSoon)}
-              className="text-[11px] font-mono px-3 py-2 rounded-lg border border-black/[0.12] hover:bg-brand-offwhite text-brand-charcoal transition-colors"
-              title="Toggle Coming Soon empty state"
-            >
-              {forceComingSoon ? 'Show Scheduled' : 'Preview Empty State'}
-            </button>
-
-            {targetEditEvent && (
-              <button
-                onClick={() => onOpenOrganizerEditModal(targetEditEvent)}
-                className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider px-3 py-2 rounded-lg border border-black/[0.12] hover:bg-brand-offwhite text-brand-charcoal transition-colors"
-                title="Organizers: Update the next event details manually"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-brand-teal" />
-                <span>Quick Edit</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -242,13 +201,6 @@ export const Events: React.FC<EventsProps> = ({
                           <h3 className="font-heading font-extrabold text-xl sm:text-3xl text-brand-black tracking-tight uppercase">
                             {evt.title}
                           </h3>
-                          <button
-                            onClick={() => onOpenOrganizerEditModal(evt)}
-                            className="shrink-0 p-1.5 rounded-lg text-brand-muted hover:text-brand-black hover:bg-white border border-transparent hover:border-black/[0.08] transition-colors"
-                            title="Organizer: Edit this event"
-                          >
-                            <Edit3 className="w-4 h-4 text-brand-teal" />
-                          </button>
                         </div>
                         <p className="text-xs sm:text-sm text-brand-charcoal/80 leading-relaxed max-w-3xl">
                           {evt.description}

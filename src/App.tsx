@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navbar } from './components/layout/Navbar';
+import { Navbar, PlayerSession } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { Hero } from './components/sections/Hero';
 import { About } from './components/sections/About';
@@ -11,21 +11,25 @@ import { Contact } from './components/sections/Contact';
 import { RegistrationModal } from './components/ui/RegistrationModal';
 import { LightboxModal } from './components/ui/LightboxModal';
 import { AlertModal } from './components/ui/AlertModal';
-import { OrganizerEditModal } from './components/ui/OrganizerEditModal';
 import { LookupRegistrationModal } from './components/ui/LookupRegistrationModal';
 import { AdminPortalModal } from './components/ui/AdminPortalModal';
+import { PlayerAuthModal } from './components/ui/PlayerAuthModal';
 import { DatabaseEvent, GalleryImage } from './types';
 import { GALLERY_IMAGES } from './data/galleryData';
+import { eventsService } from './services/eventsService';
 
 export const App: React.FC = () => {
   // Modal states
   const [selectedEvent, setSelectedEvent] = useState<DatabaseEvent | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isOrganizerEditOpen, setIsOrganizerEditOpen] = useState(false);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
-  const [eventToEdit, setEventToEdit] = useState<DatabaseEvent | null>(null);
+
+  // Player session & authentication
+  const [playerSession, setPlayerSession] = useState<PlayerSession | null>(() => eventsService.getPlayerSession());
+  const [isPlayerAuthOpen, setIsPlayerAuthOpen] = useState(false);
+  const [authIntent, setAuthIntent] = useState<'register' | 'tickets' | null>(null);
 
   // Key to trigger event refresh
   const [eventUpdateKey, setEventUpdateKey] = useState(0);
@@ -35,11 +39,17 @@ export const App: React.FC = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  // Handlers
+  // Registration & Ticket Handlers
   const handleOpenRegistration = (event?: DatabaseEvent) => {
     if (event) {
       setSelectedEvent(event);
-      setIsRegisterOpen(true);
+      // Require player phone login before registering
+      if (!playerSession) {
+        setAuthIntent('register');
+        setIsPlayerAuthOpen(true);
+      } else {
+        setIsRegisterOpen(true);
+      }
     } else {
       const eventsElement = document.getElementById('events');
       if (eventsElement) {
@@ -48,19 +58,32 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleOpenOrganizerEdit = (event: DatabaseEvent) => {
-    setEventToEdit(event);
-    setIsOrganizerEditOpen(true);
+  const handleOpenMyTickets = () => {
+    if (!playerSession) {
+      setAuthIntent('tickets');
+      setIsPlayerAuthOpen(true);
+    } else {
+      setIsLookupOpen(true);
+    }
+  };
+
+  const handlePlayerAuthSuccess = (session: PlayerSession) => {
+    setPlayerSession(session);
+    if (authIntent === 'register' && selectedEvent) {
+      setIsRegisterOpen(true);
+    } else {
+      setIsLookupOpen(true);
+    }
+    setAuthIntent(null);
+  };
+
+  const handlePlayerLogout = () => {
+    eventsService.playerLogout();
+    setPlayerSession(null);
   };
 
   const handleOpenGalleryLightbox = (_image: GalleryImage, index: number, customList?: GalleryImage[]) => {
     setLightboxImages(customList || GALLERY_IMAGES);
-    setLightboxIndex(index);
-    setLightboxOpen(true);
-  };
-
-  const handleOpenPhotoLightbox = (images: GalleryImage[], index: number) => {
-    setLightboxImages(images);
     setLightboxIndex(index);
     setLightboxOpen(true);
   };
@@ -85,7 +108,13 @@ export const App: React.FC = () => {
       {/* Sticky Editorial Navbar */}
       <Navbar 
         onJoinClick={() => handleOpenRegistration()} 
-        onAdminClick={() => setIsAdminPortalOpen(true)}
+        onMyTicketsClick={handleOpenMyTickets}
+        onLoginClick={() => {
+          setAuthIntent('tickets');
+          setIsPlayerAuthOpen(true);
+        }}
+        playerSession={playerSession}
+        onPlayerLogout={handlePlayerLogout}
       />
 
       {/* Main Content Sections */}
@@ -104,10 +133,7 @@ export const App: React.FC = () => {
           key={eventUpdateKey}
           onRegisterClick={(evt) => handleOpenRegistration(evt)}
           onOpenAlertModal={() => setIsAlertOpen(true)}
-          onOpenOrganizerEditModal={handleOpenOrganizerEdit}
-          onOpenLookupModal={() => setIsLookupOpen(true)}
-          onOpenAdminModal={() => setIsAdminPortalOpen(true)}
-          onOpenPhotoLightbox={handleOpenPhotoLightbox}
+          onOpenLookupModal={handleOpenMyTickets}
         />
 
         {/* D. GALLERY (Authentic session photos from past 2 events) */}
@@ -126,7 +152,23 @@ export const App: React.FC = () => {
       {/* G. FOOTER */}
       <Footer onAdminClick={() => setIsAdminPortalOpen(true)} />
 
-      {/* Modals & Overlays */}
+      {/* Player Phone Verification Modal */}
+      <PlayerAuthModal
+        isOpen={isPlayerAuthOpen}
+        onClose={() => {
+          setIsPlayerAuthOpen(false);
+          setAuthIntent(null);
+        }}
+        onSuccess={handlePlayerAuthSuccess}
+        title={authIntent === 'register' ? 'Phone Verification Required' : 'Sign In with Mobile'}
+        subtitle={
+          authIntent === 'register'
+            ? 'Verify your mobile number to reserve your spot and link your ticket to your account.'
+            : 'Enter your 10-digit number to automatically view your session registrations and match statuses.'
+        }
+      />
+
+      {/* 2-Step Registration & Approval Modal */}
       <RegistrationModal
         event={selectedEvent}
         isOpen={isRegisterOpen}
@@ -134,8 +176,10 @@ export const App: React.FC = () => {
         onSuccess={() => {
           setEventUpdateKey((prev) => prev + 1);
         }}
+        playerPhone={playerSession?.phone}
       />
 
+      {/* Lightbox Modal */}
       <LightboxModal
         images={lightboxImages}
         currentIndex={lightboxIndex}
@@ -145,25 +189,24 @@ export const App: React.FC = () => {
         onPrev={handlePrevImage}
       />
 
+      {/* Alert Modal */}
       <AlertModal
         isOpen={isAlertOpen}
         onClose={() => setIsAlertOpen(false)}
       />
 
-      <OrganizerEditModal
-        event={eventToEdit}
-        isOpen={isOrganizerEditOpen}
-        onClose={() => setIsOrganizerEditOpen(false)}
-        onUpdated={() => {
-          setEventUpdateKey((prev) => prev + 1);
-        }}
-      />
-
+      {/* My Tickets & Status Modal */}
       <LookupRegistrationModal
         isOpen={isLookupOpen}
         onClose={() => setIsLookupOpen(false)}
+        playerPhone={playerSession?.phone}
+        onJoinClick={() => {
+          setIsLookupOpen(false);
+          handleOpenRegistration();
+        }}
       />
 
+      {/* Organizer & Admin Portal Modal */}
       <AdminPortalModal
         isOpen={isAdminPortalOpen}
         onClose={() => setIsAdminPortalOpen(false)}

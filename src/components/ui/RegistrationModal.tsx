@@ -25,6 +25,7 @@ interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  playerPhone?: string;
 }
 
 export const RegistrationModal: React.FC<RegistrationModalProps> = ({
@@ -32,10 +33,11 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  playerPhone,
 }) => {
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(playerPhone || '');
   const [email, setEmail] = useState('');
   const [age, setAge] = useState<number | ''>('');
   const [gender, setGender] = useState('Male');
@@ -63,6 +65,20 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [copied, setCopied] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      eventsService.getPaymentSettings().then((settings) => {
+        setPaymentSettings(settings);
+      });
+      const session = eventsService.getPlayerSession();
+      if (session?.phone) {
+        setPhone(session.phone);
+      } else if (playerPhone) {
+        setPhone(playerPhone);
+      }
+    }
+  }, [isOpen, playerPhone]);
 
   const upiPaymentUri = useMemo(() => {
     if (!paymentSettings || !event) return '';
@@ -194,6 +210,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       });
 
       if (res.success && res.registrationNumber) {
+        eventsService.recordPlayerTicket(res.registrationNumber, phone, event.id);
         setSuccessData({
           registrationNumber: res.registrationNumber,
           registrationId: res.registrationId,
@@ -751,16 +768,22 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1.5">
-                        Phone / WhatsApp *
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal">
+                          Phone / WhatsApp *
+                        </label>
+                        <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Verified
+                        </span>
+                      </div>
                       <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
                         placeholder="e.g. 9876543210"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-brand-offwhite border border-black/[0.08] text-sm focus:border-brand-teal transition-all"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-brand-offwhite border border-black/[0.08] text-sm focus:border-brand-teal transition-all font-mono"
                       />
                     </div>
                   </div>
