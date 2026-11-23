@@ -15,7 +15,8 @@ import {
   ShieldCheck, 
   FileText,
   Smartphone,
-  ArrowRight
+  ArrowRight,
+  Ticket
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { eventsService } from '../../services/eventsService';
@@ -78,8 +79,6 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
       }
     }
   }, [isOpen, playerPhone]);
-
-  if (!isOpen) return null;
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,6 +253,8 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
     const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
     return `paytmmp://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
   }, [paymentSettings, result]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-brand-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fade-in">
@@ -783,16 +784,19 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
             <div className="py-16 text-center text-brand-muted font-mono text-xs uppercase tracking-widest animate-pulse">
               Retrieving your session match passes...
             </div>
-          ) : phone && userTickets.length === 0 && !showManualSearch ? (
-            <div className="text-center py-8 animate-fade-in">
-              <div className="w-14 h-14 rounded-2xl bg-brand-offwhite border border-black/[0.08] text-brand-teal flex items-center justify-center mx-auto mb-3 shadow-xs">
-                <FileText className="w-7 h-7" />
+          ) : (!result && userTickets.length === 0 && !showManualSearch) ? (
+            <div className="text-center py-10 px-4 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-brand-teal/10 border border-brand-teal/20 text-brand-teal flex items-center justify-center mx-auto mb-4 shadow-xs">
+                <Ticket className="w-8 h-8" />
               </div>
-              <h4 className="font-heading font-extrabold text-xl text-brand-black uppercase">
-                No Tickets Found for +91 {phone}
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-black/[0.05] text-brand-charcoal border border-black/[0.08] inline-block mb-2">
+                Participant Portal
+              </span>
+              <h4 className="font-heading font-extrabold text-2xl text-brand-black uppercase">
+                No Session Registered
               </h4>
-              <p className="text-xs text-brand-charcoal/80 mt-1 max-w-sm mx-auto leading-relaxed mb-6">
-                You haven't reserved a spot for this session yet. Lock your spot now!
+              <p className="text-xs text-brand-charcoal/80 mt-2 max-w-sm mx-auto leading-relaxed mb-6">
+                {phone ? `No active registrations found for +91 ${phone}.` : 'You haven’t registered for any badminton sessions yet.'} Join our upcoming weekend meetup and reserve your spot on the court!
               </p>
               {onJoinClick && (
                 <button
@@ -800,19 +804,20 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                     onClose();
                     onJoinClick();
                   }}
-                  className="inline-flex items-center gap-2 py-3.5 px-7 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-semibold text-xs uppercase tracking-wider shadow-sm transition-all"
+                  className="inline-flex items-center gap-2 py-3.5 px-8 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-semibold text-xs uppercase tracking-widest shadow-sm transition-all transform hover:-translate-y-0.5"
                 >
-                  <span>Join Upcoming Session</span>
+                  <span>Register for Upcoming Session</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
-              <div className="pt-6 mt-6 border-t border-black/[0.06]">
+              <div className="pt-6 mt-8 border-t border-black/[0.06]">
                 <button
                   type="button"
                   onClick={() => setShowManualSearch(true)}
-                  className="text-xs font-mono text-brand-teal hover:underline"
+                  className="text-xs font-mono text-brand-teal hover:underline inline-flex items-center gap-1.5"
                 >
-                  Have an existing registration number from another session? Search manually →
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Have an existing registration number? Search manually →</span>
                 </button>
               </div>
             </div>
