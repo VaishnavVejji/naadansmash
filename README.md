@@ -10,7 +10,8 @@ NAADANSMASH is a production-ready, full-stack web application designed for Kochi
 ## 🏸 Overview & Core Features
 
 ### 1. Participant Experience
-- **Interactive Registration Flow:** Atomic court booking with real-time slot decrementing, skill level selection, and deduplication.
+- **Interactive Registration Flow:** Atomic court booking with skill level selection, duplicate prevention, and automatic closure when capacity is reached.
+- **Privacy & Registration Controls:** Exact available slot counts are kept private from public view; admin can close registration at any time so nobody else can register.
 - **Dynamic Payment Instructions:** UPI QR code generation, instant clipboard copy for Organiser UPI ID (`naadansmash@upi`), and mobile tap-to-pay deep-link.
 - **4 Distinct Communication & Notification States:**
   - **Registration Received:** Confirms roster hold, displays unique registration number (`NS-YYMM-XXXXXX`), and prompts UPI payment.
@@ -25,7 +26,7 @@ NAADANSMASH is a production-ready, full-stack web application designed for Kochi
 - **3-Way Payment Controls:** Verify (`✓ Paid`), hold (`Pending`), or reject (`✗ Reject`) with preset reason dialogs.
 - **Payment & Attendance Audit History:** Immutable chronological activity log for every participant.
 - **CSV Roster Export:** One-click download of the complete court roster as RFC-4180 compliant CSV.
-- **Session & Event Management:** Toggle between open registration and *"Next Game Coming Soon"* scheduling banners, edit court timings, update fees, or create new badminton sessions.
+- **Session & Event Management:** Instantly switch between Open Registration, Closed Registration (to stop sign-ups if exceeded), and *"Next Game Coming Soon"* planning banners, edit court timings, update fees, or create new badminton sessions.
 - **Communications Configuration:** In-app setup for Resend API keys, sender address, and organiser WhatsApp contact.
 
 ---

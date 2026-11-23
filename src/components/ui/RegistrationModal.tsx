@@ -108,6 +108,17 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     setLoading(true);
     setErrorMsg('');
 
+    if (!event) {
+      setLoading(false);
+      return;
+    }
+
+    if (event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0)) {
+      setErrorMsg('Registrations are currently closed for this session. Nobody else can register.');
+      setLoading(false);
+      return;
+    }
+
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     if (!fullName.trim() || !phone.trim()) {
       setErrorMsg('Please enter your full name and 10-digit WhatsApp phone number.');
@@ -534,6 +545,15 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 </div>
               </div>
 
+              {(event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0)) && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs mb-4 flex items-center gap-2.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0" />
+                  <span className="font-semibold">
+                    Registration is currently closed for this session. Nobody else can register.
+                  </span>
+                </div>
+              )}
+
               {errorMsg && (
                 <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs mb-4">
                   {errorMsg}
@@ -822,14 +842,24 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 )}
 
                 <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 px-6 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-semibold text-xs sm:text-sm uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <span>{loading ? 'Securing Spot in Database...' : `Confirm Registration (₹${event.registration_fee})`}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  {event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0) ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-3.5 px-6 rounded-full bg-gray-200 text-gray-500 font-heading font-semibold text-xs sm:text-sm uppercase tracking-widest cursor-not-allowed border border-gray-300 flex items-center justify-center gap-2"
+                    >
+                      <span>Registration Closed</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3.5 px-6 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-semibold text-xs sm:text-sm uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <span>{loading ? 'Securing Spot in Database...' : `Confirm Registration (₹${event.registration_fee})`}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center gap-2 text-[11px] text-brand-muted pt-1">

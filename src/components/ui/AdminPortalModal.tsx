@@ -912,55 +912,77 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                     </div>
                   )}
 
-                  {/* Quick Next Session Status Banner / Toggle */}
-                  <div className="p-4 rounded-2xl bg-brand-offwhite border border-black/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  {/* Quick Next Session Registration Status Banner / Controls */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-brand-offwhite border border-black/[0.08] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
                         <span
                           className={`w-2.5 h-2.5 rounded-full ${
                             status === 'published'
                               ? 'bg-emerald-500 animate-pulse'
+                              : status === 'closed'
+                              ? 'bg-rose-600'
                               : status === 'in_progress'
                               ? 'bg-amber-500'
                               : 'bg-brand-charcoal'
                           }`}
                         />
                         <span className="font-heading font-bold text-xs uppercase tracking-wider text-brand-black">
-                          Next Session Status:{' '}
+                          Registration Status:{' '}
                           {status === 'published'
                             ? 'Open for Registration'
+                            : status === 'closed'
+                            ? 'Registration Closed (Sign-ups Disabled)'
                             : status === 'in_progress'
-                            ? 'In Progress / Scheduling (No Sessions Planned)'
+                            ? 'In Progress / Planning (No Sessions Planned)'
                             : status.toUpperCase()}
                         </span>
                       </div>
                       <p className="text-[11px] text-brand-charcoal/80 mt-1">
                         {status === 'published'
-                          ? 'Public site displays the registration card and accepts player sign-ups.'
-                          : 'Public site displays the "NEXT GAME COMING SOON" planning banner.'}
+                          ? 'Public site displays the session card and actively accepts registrations.'
+                          : status === 'closed'
+                          ? 'Public site displays REGISTRATION CLOSED. Nobody else can register.'
+                          : status === 'in_progress'
+                          ? 'Public site displays the "NEXT GAME COMING SOON" planning banner.'
+                          : `Session status is ${status}.`}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {status === 'published' ? (
-                        <button
-                          type="button"
-                          onClick={() => setStatus('in_progress')}
-                          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-mono font-semibold uppercase tracking-wider shadow-xs transition-colors flex items-center gap-1.5"
-                          title="Click to put next session in progress"
-                        >
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Put In Progress</span>
-                        </button>
-                      ) : (
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {status !== 'published' && (
                         <button
                           type="button"
                           onClick={() => setStatus('published')}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono font-semibold uppercase tracking-wider shadow-xs transition-colors flex items-center gap-1.5"
-                          title="Click to open registration"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-mono font-semibold uppercase tracking-wider shadow-xs transition-colors flex items-center gap-1.5"
+                          title="Open registration for this session"
                         >
                           <CheckCircle className="w-3.5 h-3.5" />
                           <span>Open Registration</span>
+                        </button>
+                      )}
+
+                      {status !== 'closed' && (
+                        <button
+                          type="button"
+                          onClick={() => setStatus('closed')}
+                          className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-mono font-semibold uppercase tracking-wider shadow-xs transition-colors flex items-center gap-1.5"
+                          title="Close registration so nobody else can register"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Close Registration</span>
+                        </button>
+                      )}
+
+                      {status !== 'in_progress' && (
+                        <button
+                          type="button"
+                          onClick={() => setStatus('in_progress')}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-mono font-semibold uppercase tracking-wider shadow-xs transition-colors flex items-center gap-1.5"
+                          title="Put in progress (show Coming Soon banner when no sessions planned)"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Put In Progress</span>
                         </button>
                       )}
                     </div>
@@ -1003,6 +1025,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                         className="w-full px-3.5 py-2 rounded-xl bg-brand-offwhite border border-black/[0.08] text-sm font-mono"
                       >
                         <option value="published">Published (Open for Registration)</option>
+                        <option value="closed">Closed (Registration Closed — Nobody Else Can Register)</option>
                         <option value="in_progress">In Progress / Scheduling (No Sessions Currently Planned)</option>
                         <option value="draft">Draft (Hidden from Public)</option>
                         <option value="completed">Completed (Archived in Past Events)</option>

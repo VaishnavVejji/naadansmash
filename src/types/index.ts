@@ -1,6 +1,6 @@
 export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced';
 
-export type EventStatus = 'draft' | 'published' | 'completed' | 'cancelled' | 'in_progress';
+export type EventStatus = 'draft' | 'published' | 'completed' | 'cancelled' | 'in_progress' | 'closed';
 
 export type PaymentStatus = 'pending' | 'verified' | 'rejected';
 

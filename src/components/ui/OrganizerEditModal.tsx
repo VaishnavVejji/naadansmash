@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Save, Settings, QrCode } from 'lucide-react';
+import { X, Check, Save, Settings, QrCode, CheckCircle, XCircle } from 'lucide-react';
 import { DatabaseEvent } from '../../types';
 import { eventsService } from '../../services/eventsService';
 
@@ -116,6 +116,40 @@ export const OrganizerEditModal: React.FC<OrganizerEditModalProps> = ({
             </div>
           )}
 
+          {/* Quick Registration Status Controls */}
+          <div className="p-3.5 rounded-2xl bg-brand-offwhite border border-black/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                status === 'published' ? 'bg-emerald-500 animate-pulse' : status === 'closed' ? 'bg-rose-600' : 'bg-amber-500'
+              }`} />
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-brand-black">
+                Registration: {status === 'published' ? 'Open for Sign-ups' : status === 'closed' ? 'Closed' : status.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {status !== 'published' && (
+                <button
+                  type="button"
+                  onClick={() => setStatus('published')}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-mono font-semibold uppercase tracking-wider transition-colors flex items-center gap-1"
+                >
+                  <CheckCircle className="w-3 h-3" />
+                  <span>Open Registration</span>
+                </button>
+              )}
+              {status !== 'closed' && (
+                <button
+                  type="button"
+                  onClick={() => setStatus('closed')}
+                  className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-mono font-semibold uppercase tracking-wider transition-colors flex items-center gap-1"
+                >
+                  <XCircle className="w-3 h-3" />
+                  <span>Close Registration</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-mono font-bold uppercase text-brand-charcoal mb-1">
               Event Title
@@ -153,6 +187,7 @@ export const OrganizerEditModal: React.FC<OrganizerEditModalProps> = ({
                 className="w-full px-3.5 py-2 rounded-xl bg-brand-offwhite border border-black/[0.08] text-sm font-mono"
               >
                 <option value="published">Published (Open for Registration)</option>
+                <option value="closed">Closed (Registration Closed — Nobody Else Can Register)</option>
                 <option value="in_progress">In Progress / Scheduling (No Sessions Currently Planned)</option>
                 <option value="draft">Draft (Hidden from Public)</option>
                 <option value="completed">Completed (Archived in Past Events)</option>

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   registration_fee NUMERIC(10, 2) NOT NULL DEFAULT 250.00,
   max_participants INTEGER NOT NULL DEFAULT 24,
   registration_deadline TIMESTAMPTZ,
-  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'completed', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'completed', 'cancelled', 'in_progress', 'closed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -90,7 +90,7 @@ ALTER TABLE public.payment_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can view published events" ON public.events;
 CREATE POLICY "Public can view published events" ON public.events
   FOR SELECT
-  USING (status IN ('published', 'completed'));
+  USING (status IN ('published', 'completed', 'closed', 'in_progress'));
 
 -- 2. Authenticated Organizers/Admins can manage all events
 DROP POLICY IF EXISTS "Admins can manage events" ON public.events;

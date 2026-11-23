@@ -229,7 +229,7 @@ export const eventsService = {
         const { data, error } = await client
           .from('events')
           .select('*')
-          .in('status', ['published', 'completed'])
+          .in('status', ['published', 'completed', 'closed', 'in_progress'])
           .order('event_date', { ascending: false });
 
         if (!error && data && data.length > 0) {
@@ -514,8 +514,8 @@ export const eventsService = {
       return { success: false, message: 'Please enter a valid email address.' };
     }
 
-    if (targetEvent.status !== 'published') {
-      return { success: false, message: 'Registrations are closed for this event.' };
+    if (targetEvent.status === 'closed' || targetEvent.status !== 'published') {
+      return { success: false, message: 'Registrations are currently closed for this session. Nobody else can register.' };
     }
 
     if (targetEvent.registration_deadline && new Date() > new Date(targetEvent.registration_deadline)) {

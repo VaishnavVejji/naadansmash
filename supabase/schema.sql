@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   registration_fee NUMERIC(10, 2) NOT NULL DEFAULT 250.00,
   max_participants INTEGER NOT NULL DEFAULT 24,
   registration_deadline TIMESTAMPTZ,
-  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'completed', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'completed', 'cancelled', 'in_progress', 'closed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -116,7 +116,7 @@ CREATE POLICY "Admins can view contact inquiries" ON public.contact_inquiries
 DROP POLICY IF EXISTS "Public can view published events" ON public.events;
 CREATE POLICY "Public can view published events" ON public.events
   FOR SELECT
-  USING (status IN ('published', 'completed'));
+  USING (status IN ('published', 'completed', 'closed', 'in_progress'));
 
 DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
 CREATE POLICY "Admins can manage events" ON public.events

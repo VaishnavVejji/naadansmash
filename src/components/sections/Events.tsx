@@ -89,7 +89,7 @@ export const Events: React.FC<EventsProps> = ({
   const upcomingEvents = forceComingSoon 
     ? [] 
     : events.filter(
-        (e) => !e.isHistorical && e.event_date > '2026-11-22' && e.status === 'published'
+        (e) => !e.isHistorical && e.event_date > '2026-11-22' && (e.status === 'published' || e.status === 'closed')
       );
 
   const inProgressEvent = events.find(
@@ -258,7 +258,9 @@ export const Events: React.FC<EventsProps> = ({
             ) : (
               /* PREMIUM EVENT-BOOKING PLATFORM CARD */
               <div className="max-w-4xl mx-auto">
-                {upcomingEvents.map((evt) => (
+                {upcomingEvents.map((evt) => {
+                  const isRegistrationOpen = evt.status === 'published' && (evt.available_slots === undefined || evt.available_slots > 0);
+                  return (
                   <div
                     key={evt.id}
                     className="bg-brand-offwhite rounded-3xl border border-black/[0.08] shadow-subtle hover:shadow-premium transition-all duration-300 overflow-hidden"
@@ -267,14 +269,14 @@ export const Events: React.FC<EventsProps> = ({
                     <div className="p-4 sm:p-6 bg-white border-b border-black/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold uppercase tracking-wider ${
-                          (evt.available_slots ?? evt.max_participants) > 0 
+                          isRegistrationOpen 
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
                             : 'bg-rose-50 text-rose-800 border border-rose-200'
                         }`}>
                           <span className={`h-2 w-2 rounded-full ${
-                            (evt.available_slots ?? evt.max_participants) > 0 ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'
+                            isRegistrationOpen ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'
                           }`} />
-                          {(evt.available_slots ?? evt.max_participants) > 0 ? 'Registration Open' : 'Slots Full'}
+                          {isRegistrationOpen ? 'Registration Open' : 'Registration Closed'}
                         </span>
                         <span className="text-xs font-mono text-brand-muted uppercase">
                           Kochi Chapter
@@ -371,24 +373,24 @@ export const Events: React.FC<EventsProps> = ({
                         </div>
                       </div>
 
-                      {/* Capacity Progress Bar */}
-                      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-black/[0.06]">
-                        <div className="flex items-center justify-between text-xs mb-2 font-mono">
-                          <span className="text-brand-charcoal uppercase flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5 text-brand-teal" />
-                            <span>Player Roster Capacity</span>
-                          </span>
-                          <span className="font-bold text-brand-black">
-                            {evt.available_slots ?? evt.max_participants} of {evt.max_participants} Slots Available
-                          </span>
+                      {/* Session Status Strip (Slot counter removed per preference) */}
+                      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-black/[0.06] flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <Users className="w-3.5 h-3.5 text-brand-teal" />
+                          <span className="text-brand-charcoal uppercase font-semibold">Weekend Doubles Session</span>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-brand-offwhite overflow-hidden">
-                          <div
-                            className="h-full bg-brand-teal rounded-full transition-all duration-500"
-                            style={{
-                              width: `${((evt.max_participants - (evt.available_slots ?? evt.max_participants)) / evt.max_participants) * 100}%`
-                            }}
-                          />
+                        <div className="text-xs font-mono font-bold">
+                          {isRegistrationOpen ? (
+                            <span className="text-emerald-700 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                              Open For Registration
+                            </span>
+                          ) : (
+                            <span className="text-rose-700 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-rose-600" />
+                              Registration Closed
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -396,10 +398,12 @@ export const Events: React.FC<EventsProps> = ({
                     {/* Bottom Action Footer */}
                     <div className="p-4 sm:p-6 bg-white border-t border-black/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3">
                       <div className="text-[11px] text-brand-muted text-center sm:text-left">
-                        * Pay via UPI or Cash directly at the venue. Atomic database protection prevents duplicate bookings.
+                        {isRegistrationOpen
+                          ? '* Pay via UPI or Cash directly at the venue. Atomic database protection prevents duplicate bookings.'
+                          : '* Registrations for this session are currently closed. Join alerts below to get notified for the next game.'}
                       </div>
 
-                      {(evt.available_slots ?? evt.max_participants) > 0 ? (
+                      {isRegistrationOpen ? (
                         <button
                           onClick={() => onRegisterClick(evt)}
                           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-7 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-semibold text-xs uppercase tracking-widest transition-all duration-200 shadow-sm"
@@ -408,16 +412,25 @@ export const Events: React.FC<EventsProps> = ({
                           <ArrowRight className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button
-                          onClick={onOpenAlertModal}
-                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-4 px-8 rounded-full bg-brand-black text-white font-heading font-medium text-xs sm:text-sm uppercase tracking-widest"
-                        >
-                          <span>JOIN WAITLIST</span>
-                        </button>
+                        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                          <button
+                            disabled
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-black/10 text-brand-charcoal/50 font-heading font-semibold text-xs uppercase tracking-widest cursor-not-allowed border border-black/[0.08]"
+                          >
+                            <span>REGISTRATION CLOSED</span>
+                          </button>
+                          <button
+                            onClick={onOpenAlertModal}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-brand-black hover:bg-black/80 text-white font-heading font-medium text-xs uppercase tracking-widest transition-colors shrink-0"
+                          >
+                            <span>GET ALERTS</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
