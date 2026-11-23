@@ -626,7 +626,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                       setFee(250);
                       setMaxParticipants(24);
                       setStatus('published');
-                      setDescription('Weekend evening session scheduled by the coach. 3 hours of structured doubles rotations paired by skill level with refreshments included.');
+                      setDescription('Weekend evening badminton meetup session. 3 hours of structured doubles rotations paired by skill level with refreshments included.');
                     }}
                     className="px-2.5 py-1.5 rounded-lg bg-brand-teal hover:bg-[#126f8c] text-white text-xs font-mono uppercase tracking-wider font-semibold transition-colors flex items-center gap-1 shrink-0"
                     title="Create New Event Session"
@@ -937,7 +937,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                       <p className="text-[11px] text-brand-charcoal/80 mt-1">
                         {status === 'published'
                           ? 'Public site displays the registration card and accepts player sign-ups.'
-                          : 'Public site displays the "NEXT GAME COMING SOON" coach-scheduling banner.'}
+                          : 'Public site displays the "NEXT GAME COMING SOON" planning banner.'}
                       </p>
                     </div>
 
@@ -1014,7 +1014,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-mono font-bold uppercase text-brand-charcoal mb-1">
-                        Start Time (Coach Evening Time)
+                        Start Time (Evening)
                       </label>
                       <input
                         type="time"
@@ -1027,7 +1027,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
 
                     <div>
                       <label className="block text-xs font-mono font-bold uppercase text-brand-charcoal mb-1">
-                        End Time (Coach Evening Time)
+                        End Time (Evening)
                       </label>
                       <input
                         type="time"

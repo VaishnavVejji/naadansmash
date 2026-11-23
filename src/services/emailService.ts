@@ -328,7 +328,7 @@ Organiser WhatsApp: +91 83048 83872
       </div>
 
       <p style="font-size: 13px; color: #555; line-height: 1.5; margin: 0;">
-        Tournament feather shuttles, court scheduling by coach, and post-game Kerala chai are all taken care of. See you on court!
+        Court bookings, organized match play, and post-game Kerala chai are all taken care of. See you on court!
       </p>
     </div>
     <div class="footer">
@@ -357,7 +357,7 @@ Session Details:
 - Status: Confirmed & Paid
 
 What to bring: Sports shoes, racquet (or loaner), water bottle, dry-fit sportswear.
-Tournament feather shuttles and post-match chai are included.
+Organized match play and post-match chai are included.
 
 Organiser WhatsApp: +91 83048 83872
 `;

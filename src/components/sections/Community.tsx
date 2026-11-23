@@ -80,7 +80,7 @@ export const Community: React.FC<CommunityProps> = ({ onJoinClick }) => {
             WHAT TO BRING
           </h2>
           <p className="text-xs sm:text-sm text-white/70 mt-3 max-w-xl leading-relaxed">
-            Everything else — from tournament feather shuttles to court scheduling — is taken care of by the NAADANSMASH team. Pack these essentials for your weekend game:
+            Everything else — from court bookings to balanced game rotations — is taken care of by the NAADANSMASH team. Pack these essentials for your weekend game:
           </p>
         </div>
 
@@ -152,7 +152,7 @@ export const Community: React.FC<CommunityProps> = ({ onJoinClick }) => {
         <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/[0.04] backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/10">
           <div className="flex items-center gap-2 text-xs sm:text-sm text-white/90">
             <Sparkles className="w-4 h-4 text-[#ffd400] shrink-0" />
-            <span>Feather shuttles, court bookings & post-game Kerala chai are all taken care of.</span>
+            <span>Court bookings, organized match play & post-game Kerala chai are all taken care of.</span>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">

@@ -113,7 +113,7 @@ export const App: React.FC = () => {
         {/* D. GALLERY (Authentic session photos from past 2 events) */}
         <Gallery onImageSelect={handleOpenGalleryLightbox} />
 
-        {/* ORGANIZERS & COACHING LEADERSHIP */}
+        {/* ORGANIZERS & COMMUNITY LEADERSHIP */}
         <Organizers />
 
         {/* E. COMMUNITY */}

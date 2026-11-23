@@ -121,7 +121,7 @@ export const Organizers: React.FC = () => {
           ))}
         </div>
 
-        {/* Coach Timing & Coordination Box */}
+        {/* Badminton Meetup Clarification Box */}
         <div className="p-6 sm:p-8 rounded-2xl bg-brand-offwhite border border-black/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-white border border-black/[0.08] text-brand-teal flex items-center justify-center shrink-0">
@@ -129,10 +129,10 @@ export const Organizers: React.FC = () => {
             </div>
             <div>
               <div className="font-heading font-bold text-base text-brand-black">
-                How Weekend Sessions Are Scheduled
+                A Badminton Meetup — Not A Coaching Session
               </div>
               <div className="text-xs sm:text-sm text-brand-muted mt-0.5">
-                Our coach reviews court availability and player requests to select evening times. Dates and evening time slots are posted for each upcoming event.
+                NAADANSMASH is a social badminton meetup for fun, competitive weekend games. Our organizer Sivaram is an experienced coach who organizes the courts and balances player rotations so everyone enjoys great match play!
               </div>
             </div>
           </div>

@@ -76,7 +76,7 @@ export const Hero: React.FC<HeroProps> = ({ onJoinClick, onExploreClick }) => {
             <div className="font-heading font-bold text-sm sm:text-base text-white">
               Weekends
             </div>
-            <div className="text-xs text-white/70">Evening times set by coach</div>
+            <div className="text-xs text-white/70">Evening times announced per session</div>
           </div>
 
           <div className="py-2">
@@ -106,7 +106,7 @@ export const Hero: React.FC<HeroProps> = ({ onJoinClick, onExploreClick }) => {
             <div className="font-heading font-bold text-sm sm:text-base text-white">
               Doubles & Rotations
             </div>
-            <div className="text-xs text-white/70">Coach Coordinated Games</div>
+            <div className="text-xs text-white/70">Social Badminton Meetup</div>
           </div>
         </div>
       </div>

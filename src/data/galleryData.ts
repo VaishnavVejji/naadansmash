@@ -53,7 +53,7 @@ export const FIRST_SESSION_IMAGES: GalleryImage[] = [
     id: 's1-07',
     src: '/images/first%20session/WhatsApp%20Image%202026-11-22%20at%202.09.34%20PM.jpeg',
     title: 'First Session — Pre-Game Briefing',
-    caption: 'Organizers and coach briefing players on rules.',
+    caption: 'Organizers briefing players on doubles rotations.',
     category: 'court',
     tag: 'Session #1'
   },
@@ -143,8 +143,8 @@ export const SECOND_SESSION_IMAGES: GalleryImage[] = [
   {
     id: 's2-07',
     src: '/images/second%20sesssion/WhatsApp%20Image%202026-11-22%20at%201.58.35%20PM.jpeg',
-    title: 'Second Session — Coaching Pointers',
-    caption: 'Coach giving tips on doubles court positioning.',
+    title: 'Second Session — Doubles Strategy',
+    caption: 'Players discussing doubles court positioning between rallies.',
     category: 'court',
     tag: 'Session #2'
   },

@@ -15,7 +15,7 @@ export const BRAND_CONFIG = {
     email: 'naadansmash@gmail.com',
   },
   meta: {
-    schedule: 'Weekends • Evening times scheduled by coach',
+    schedule: 'Weekends • Evening times announced per session',
     pastEventsCount: 2,
   }
 };
@@ -27,7 +27,7 @@ export const TEAM_MEMBERS = [
     role: 'Co-Founder & Main Organizer',
     badge: 'Main Organizer',
     badgeType: 'organizer' as const,
-    bio: 'Drives community strategy, court bookings, match rotations, and coach scheduling for every weekend session across Kochi.',
+    bio: 'An experienced badminton coach and the driving force behind NAADANSMASH. Sivaram coordinates court bookings, balances match rotations, and creates a welcoming meetup environment for players across Kochi.',
     photo: '/images/organizer1.jpeg',
     isPlaceholder: false,
     action: {
@@ -74,7 +74,7 @@ export const ORGANIZERS_DATA = [
     name: 'SIVARAM P BABU',
     role: 'Co-Founder & Main Organizer',
     badge: 'Main Organizer',
-    bio: 'Drives community strategy, court bookings, match rotations, and coaching coordination for every weekend session across Kochi.',
+    bio: 'An experienced badminton coach and the driving force behind NAADANSMASH. Sivaram coordinates court bookings, balances match rotations, and creates a welcoming meetup environment for players across Kochi.',
     photo: '/images/organizer1.jpeg',
     isPlaceholder: false,
     social: {
@@ -122,7 +122,7 @@ export const CORE_PILLARS = [
     title: 'PLAY',
     tag: 'ON THE COURT',
     description: 'Crisp rallies, dynamic rotations, and competitive badminton matches structured for all skill levels. From beginners finding their footwork to seasoned players trading smashes, every player gets real court time.',
-    details: ['Doubles & Mixed Rotations', 'Feather Shuttles Provided', 'Quality Indoor Arenas (Location Varies)']
+    details: ['Doubles & Mixed Rotations', 'Social Meetup Atmosphere', 'Quality Indoor Arenas (Location Varies)']
   },
   {
     num: '02',
@@ -135,15 +135,15 @@ export const CORE_PILLARS = [
     num: '03',
     title: 'REPEAT',
     tag: 'EVERY WEEKEND',
-    description: 'Weekend games are our ritual. Scheduled in the evenings by our coach to fit busy schedules, giving you the perfect active reset to elevate your week.',
-    details: ['Weekend Evening Sessions', 'Coach-Planned Rotations', 'Consistency & Fitness Habit']
+    description: 'Weekend games are our ritual. Scheduled in the evenings to fit busy schedules, giving you the perfect active reset to elevate your week.',
+    details: ['Weekend Evening Sessions', 'Balanced Match Rotations', 'Consistency & Fitness Habit']
   }
 ];
 
 export const COMMUNITY_PILLARS = [
   {
     title: 'Open to All Skill Levels',
-    description: 'Whether you haven’t touched a racket since school or play regularly, our coach balances the courts so you get competitive, engaging games.',
+    description: 'Whether you haven’t touched a racket since school or play regularly, court rotations are balanced by skill level so you get competitive, engaging games.',
     icon: 'Sparkles'
   },
   {
@@ -153,7 +153,7 @@ export const COMMUNITY_PILLARS = [
   },
   {
     title: 'Weekend Evening Sessions',
-    description: 'Sessions take place mostly on weekend evenings, with precise times scheduled and announced in advance by our coach.',
+    description: 'Sessions take place mostly on weekend evenings, with precise times announced in advance for each meetup.',
     icon: 'CalendarCheck'
   },
   {
@@ -177,12 +177,12 @@ export const SESSION_FLOW = [
   {
     time: 'Warmup',
     title: 'Arrival & Dynamic Warmup',
-    desc: 'Stretching, light rallies, and coach welcoming newcomers to the court.'
+    desc: 'Stretching, light rallies, and welcoming newcomers to the court.'
   },
   {
     time: 'Rounds',
     title: 'Structured Match Rotations',
-    desc: 'Timed doubles rotations coordinated by the coach so everyone plays balanced games.'
+    desc: 'Timed doubles rotations coordinated so everyone plays balanced games.'
   },
   {
     time: 'Climax',

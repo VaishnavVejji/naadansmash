@@ -6,7 +6,7 @@ import { emailService, EmailSendResult } from './emailService';
 const HISTORICAL_EVENT_1: DatabaseEvent = {
   id: '11111111-1111-1111-1111-111111111111',
   title: 'Inaugural Smash — Session #1',
-  description: 'Inaugural weekend evening session. 24 players gathered for 3 hours of coach-coordinated doubles rotations, intense rallies, and post-game Kerala chai.',
+  description: 'Inaugural weekend evening session. 24 players gathered for 3 hours of organized doubles rotations, intense rallies, and post-game Kerala chai.',
   event_date: '2026-11-15', // 15 November 2026 (Historical)
   start_time: '17:30:00',
   end_time: '20:30:00',
@@ -23,7 +23,7 @@ const HISTORICAL_EVENT_1: DatabaseEvent = {
 const HISTORICAL_EVENT_2: DatabaseEvent = {
   id: '33333333-3333-3333-3333-333333333333',
   title: 'Weekend Evening Smash — Session #2',
-  description: 'Our second high-energy session. 24 players on court for fast-paced doubles rotations, tournament feather shuttles, and authentic community connections.',
+  description: 'Our second high-energy session. 24 players on court for fast-paced doubles rotations, authentic community connections, and post-game Kerala chai.',
   event_date: '2026-11-22', // 22 November 2026 (Historical)
   start_time: '17:30:00',
   end_time: '20:30:00',
@@ -40,7 +40,7 @@ const HISTORICAL_EVENT_2: DatabaseEvent = {
 const UPCOMING_DEFAULT_EVENT: DatabaseEvent = {
   id: '22222222-2222-2222-2222-222222222222',
   title: 'Weekend Evening Smash — Session #3',
-  description: 'Upcoming weekend evening session scheduled by our coach. 3 hours of structured doubles rotations paired by skill level with refreshments included.',
+  description: 'Upcoming weekend evening meetup session. 3 hours of structured doubles rotations paired by skill level with refreshments included.',
   event_date: '2026-11-29', // Upcoming weekend date
   start_time: '17:30:00',
   end_time: '20:30:00',

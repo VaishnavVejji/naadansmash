@@ -28,7 +28,7 @@ export const About: React.FC = () => {
               Born from a simple love for the shuttle in Kochi.
             </h3>
             <p className="leading-relaxed text-xs sm:text-sm text-brand-charcoal/85">
-              Finding quality court time, consistent playing partners, and a zero-pressure environment shouldn’t be a hassle. We set out to streamline weekend badminton in Kochi: reserved multi-court facilities, premium feather shuttles, coach-balanced rotations, and an energetic circle of friends waiting for you at the net.
+              Finding quality court time, consistent playing partners, and a zero-pressure environment shouldn’t be a hassle. We set out to streamline weekend badminton in Kochi: reserved multi-court facilities, organized doubles match rotations, and an energetic circle of friends waiting for you at the net.
             </p>
             <p className="leading-relaxed text-xs sm:text-sm text-brand-charcoal/85">
               Whether you’re smashing steep angles down the line or just rediscovering your service touch after years away from the court, there is always an open spot for you in our circle.
@@ -41,7 +41,7 @@ export const About: React.FC = () => {
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-black/[0.08] shadow-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-brand-teal shrink-0" />
-                <span className="font-medium text-brand-black">Tournament Feather Shuttles</span>
+                <span className="font-medium text-brand-black">Organized Match Play</span>
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-black/[0.08] shadow-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-brand-teal shrink-0" />

@@ -124,13 +124,13 @@ export const Contact: React.FC = () => {
                     {BRAND_CONFIG.location.address}
                   </div>
                   <div className="text-[11px] text-brand-muted mt-1.5 leading-relaxed font-mono">
-                    Venues rotate between top Kochi badminton arenas based on coach scheduling (Session #1: Fitness Soul, Kakkanad • Session #2: Cochin Sports Arena, Edappally).
+                    Venues rotate between top Kochi badminton arenas depending on location and court availability (Session #1: Fitness Soul, Kakkanad • Session #2: Cochin Sports Arena, Edappally).
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2.5 text-xs font-mono text-brand-muted">
                   <Clock className="w-4 h-4 text-brand-teal shrink-0" />
-                  <span>Weekend Evening Sessions • Scheduled by Coach</span>
+                  <span>Weekend Evening Meetup Sessions</span>
                 </div>
               </div>
             </div>

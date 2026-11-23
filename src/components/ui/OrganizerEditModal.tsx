@@ -164,7 +164,7 @@ export const OrganizerEditModal: React.FC<OrganizerEditModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-mono font-bold uppercase text-brand-charcoal mb-1">
-                Start Time (Coach Evening Time)
+                Start Time (Evening)
               </label>
               <input
                 type="time"
@@ -269,7 +269,7 @@ export const OrganizerEditModal: React.FC<OrganizerEditModalProps> = ({
 
           <div>
             <label className="block text-xs font-mono font-bold uppercase text-brand-charcoal mb-1">
-              Description & Coach Notes
+              Description & Session Notes
             </label>
             <textarea
               rows={3}

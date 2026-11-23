@@ -33,7 +33,7 @@ interface EventsProps {
 const DEFAULT_HISTORICAL_S2: DatabaseEvent = {
   id: '33333333-3333-3333-3333-333333333333',
   title: 'Weekend Evening Smash — Session #2',
-  description: 'Our second high-energy session. 24 players on court for fast-paced doubles rotations, tournament feather shuttles, and authentic community connections.',
+  description: 'Our second high-energy session. 24 players on court for fast-paced doubles rotations, balanced games, and authentic community connections.',
   event_date: '2026-11-22',
   start_time: '17:30:00',
   end_time: '20:30:00',
@@ -112,7 +112,7 @@ export const Events: React.FC<EventsProps> = ({
               <span>STARTS HERE.</span>
             </h2>
             <p className="text-xs sm:text-sm text-brand-charcoal/80 mt-2 max-w-2xl leading-relaxed">
-              Sessions happen on weekends during evening hours scheduled by our coach. Lock your spot below.
+              Sessions happen on weekends during evening hours. Lock your spot below.
             </p>
           </div>
 
@@ -207,7 +207,7 @@ export const Events: React.FC<EventsProps> = ({
                 </div>
 
                 <div className="inline-block px-3 py-1 rounded-full bg-brand-black text-white text-[10px] font-mono font-semibold uppercase tracking-[0.2em] mb-4">
-                  {inProgressEvent?.status === 'in_progress' ? 'COACH SCHEDULING IN PROGRESS' : 'COACH SCHEDULING'}
+                  {inProgressEvent?.status === 'in_progress' ? 'SESSION PLANNING IN PROGRESS' : 'SESSION SCHEDULING'}
                 </div>
 
                 <h3 className="font-heading font-extrabold text-3xl sm:text-5xl text-brand-black uppercase tracking-tight mb-4">
@@ -216,8 +216,8 @@ export const Events: React.FC<EventsProps> = ({
 
                 <p className="text-base text-brand-charcoal/80 max-w-lg mx-auto leading-relaxed mb-8">
                   {inProgressEvent?.status === 'in_progress'
-                    ? 'Our coach and organizers are currently finalizing court availability and evening timings for the upcoming session. Stay tuned or join the WhatsApp broadcast below to receive instant notification the moment registration opens!'
-                    : 'Weekend evening court sessions are finalized and posted manually once court availability is confirmed by our coach. Join the broadcast to be alerted the moment registration opens.'}
+                    ? 'Our team is currently finalizing court availability and evening timings for the upcoming session. Stay tuned or join the WhatsApp broadcast below to receive instant notification the moment registration opens!'
+                    : 'Weekend evening meetup sessions are finalized and posted once court availability is confirmed. Join the broadcast to be alerted the moment registration opens.'}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 text-left max-w-xl mx-auto">
@@ -227,7 +227,7 @@ export const Events: React.FC<EventsProps> = ({
                   </div>
                   <div className="p-4 bg-white rounded-xl border border-black/[0.08]">
                     <div className="text-[10px] font-mono text-brand-muted uppercase tracking-wider font-semibold">Timing</div>
-                    <div className="font-bold text-sm text-brand-black mt-0.5">Evenings (By Coach)</div>
+                    <div className="font-bold text-sm text-brand-black mt-0.5">Evenings (Meetup Session)</div>
                   </div>
                   <div className="p-4 bg-white rounded-xl border border-black/[0.08]">
                     <div className="text-[10px] font-mono text-brand-muted uppercase tracking-wider font-semibold">Location</div>
@@ -332,7 +332,7 @@ export const Events: React.FC<EventsProps> = ({
                         <div className="p-3 sm:p-3.5 rounded-xl bg-white border border-black/[0.06]">
                           <div className="flex items-center gap-2 text-brand-muted text-[10px] font-mono uppercase tracking-wider mb-0.5">
                             <Clock className="w-3.5 h-3.5 text-brand-teal" />
-                            <span>Evening Time (By Coach)</span>
+                            <span>Evening Time</span>
                           </div>
                           <div className="font-heading font-bold text-sm sm:text-base text-brand-black">
                             {evt.start_time.slice(0, 5)} – {evt.end_time.slice(0, 5)}
@@ -357,7 +357,7 @@ export const Events: React.FC<EventsProps> = ({
                       <div className="flex flex-wrap items-center gap-3 text-xs text-brand-charcoal pt-0.5">
                         <div className="flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-brand-teal" />
-                          <span>Feather shuttles</span>
+                          <span>Doubles match rotations</span>
                         </div>
                         <span className="text-black/20">•</span>
                         <div className="flex items-center gap-1.5">
@@ -367,7 +367,7 @@ export const Events: React.FC<EventsProps> = ({
                         <span className="text-black/20">•</span>
                         <div className="flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-brand-teal" />
-                          <span>Coach-balanced doubles rotations</span>
+                          <span>Balanced games for all levels</span>
                         </div>
                       </div>
 

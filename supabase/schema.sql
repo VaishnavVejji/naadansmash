@@ -457,7 +457,7 @@ INSERT INTO public.events (
 ) VALUES (
   '11111111-1111-1111-1111-111111111111',
   'Weekend Smash — Session #1',
-  'Inaugural weekend evening session. 24 players gathered for 3 hours of coach-coordinated doubles rotations and friendly rallies.',
+  'Inaugural weekend evening session. 24 players gathered for 3 hours of organized doubles rotations and friendly rallies.',
   '2026-11-15',
   '17:30:00',
   '20:30:00',
@@ -483,7 +483,7 @@ INSERT INTO public.events (
 ) VALUES (
   '22222222-2222-2222-2222-222222222222',
   'Weekend Evening Smash — Session #2',
-  'Weekend evening session scheduled by the coach. 3 hours of structured doubles rotations paired by skill level with refreshments included.',
+  'Weekend evening badminton meetup session. 3 hours of structured doubles rotations paired by skill level with refreshments included.',
   '2026-11-29',
   '17:30:00',
   '20:30:00',
