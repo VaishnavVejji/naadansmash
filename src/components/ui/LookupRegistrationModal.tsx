@@ -702,7 +702,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                   value={regNumber}
                   onChange={(e) => setRegNumber(e.target.value)}
                   required
-                  placeholder="e.g. NS-2611-ABC123"
+                  placeholder="e.g. NS-001"
                   className="w-full px-4 py-2.5 rounded-xl bg-brand-offwhite border border-black/[0.08] text-sm font-mono uppercase focus:border-brand-teal outline-none"
                   autoFocus
                 />

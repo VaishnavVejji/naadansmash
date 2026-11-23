@@ -927,7 +927,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Filter by player name, phone, UTR or reg # (e.g. NS-2611...)"
+                        placeholder="Filter by player name, phone, UTR or reg # (e.g. NS-001...)"
                         className="w-full pl-10 pr-4 py-2 rounded-xl bg-brand-offwhite border border-black/[0.08] text-xs font-mono"
                       />
                     </div>

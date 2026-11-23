@@ -286,8 +286,15 @@ BEGIN
     );
   END IF;
 
-  -- 6. Generate unique registration number (NS-YYMM-XXXXXX)
-  v_reg_number := 'NS-' || to_char(NOW(), 'YYMM') || '-' || upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 6));
+  -- 6. Generate unique sequential registration number (NS-00X format)
+  SELECT 'NS-' || lpad((COALESCE(MAX(SUBSTRING(registration_number FROM 'NS-([0-9]+)')::integer), 0) + 1)::text, 3, '0')
+  INTO v_reg_number
+  FROM public.registrations
+  WHERE registration_number ~ '^NS-[0-9]+$';
+
+  IF v_reg_number IS NULL THEN
+    v_reg_number := 'NS-001';
+  END IF;
 
   -- 7. Insert the registration atomically
   INSERT INTO public.registrations (

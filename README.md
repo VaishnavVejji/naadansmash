@@ -14,7 +14,7 @@ NAADANSMASH is a production-ready, full-stack web application designed for Kochi
 - **Privacy & Registration Controls:** Exact available slot counts are kept private from public view; admin can close registration at any time so nobody else can register.
 - **Dynamic Payment Instructions:** UPI QR code generation, instant clipboard copy for Organiser UPI ID (`psivaram17-1@oksbi`), and mobile 1-tap UPI app payment button (GPay, PhonePe, Paytm, BHIM).
 - **4 Distinct Communication & Notification States:**
-  - **Registration Received:** Confirms roster hold, displays unique registration number (`NS-YYMM-XXXXXX`), and prompts UPI payment.
+  - **Registration Received:** Confirms roster hold, displays unique sequential registration pass (`NS-00X`), and prompts UPI payment.
   - **Payment Submitted:** Displays under-review note and submitted 12-digit UTR reference.
   - **Payment Verified:** `"YOU'RE IN!"` digital court pass with match timings and game-day essentials checklist (Racket, non-marking shoes, water bottle, dry-fit sportswear).
   - **Payment Rejected:** Prominently displays the administrator's rejection reason, direct WhatsApp appeal button, and an inline form to re-submit corrected payment references.

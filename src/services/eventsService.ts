@@ -117,7 +117,7 @@ function saveStoredEvents(events: DatabaseEvent[]) {
 const DEFAULT_TEST_REGISTRATIONS: any[] = [
   {
     id: 'reg-demo-001',
-    registration_number: 'NS-2611-24EB29',
+    registration_number: 'NS-001',
     event_id: '22222222-2222-2222-2222-222222222222',
     full_name: 'Test Verification Player',
     email: 'player.verify@naadansmash.com',
@@ -134,7 +134,7 @@ const DEFAULT_TEST_REGISTRATIONS: any[] = [
   },
   {
     id: 'reg-demo-002',
-    registration_number: 'NS-2611-8899AA',
+    registration_number: 'NS-002',
     event_id: '22222222-2222-2222-2222-222222222222',
     full_name: 'Rahul Varma',
     email: 'rahul.varma@example.com',
@@ -151,7 +151,7 @@ const DEFAULT_TEST_REGISTRATIONS: any[] = [
   },
   {
     id: 'reg-demo-003',
-    registration_number: 'NS-2611-77CC11',
+    registration_number: 'NS-003',
     event_id: '22222222-2222-2222-2222-222222222222',
     full_name: 'Anjali Menon',
     email: 'anjali.menon@example.com',
@@ -168,7 +168,7 @@ const DEFAULT_TEST_REGISTRATIONS: any[] = [
   },
   {
     id: 'reg-demo-004',
-    registration_number: 'NS-2611-99DD44',
+    registration_number: 'NS-004',
     event_id: '22222222-2222-2222-2222-222222222222',
     full_name: 'Kiran Thomas',
     email: 'kiran.thomas@example.com',
@@ -186,10 +186,135 @@ const DEFAULT_TEST_REGISTRATIONS: any[] = [
   },
 ];
 
+const OLD_DEMO_TICKETS: Record<string, string> = {
+  'NS-2611-24EB29': 'NS-001',
+  'NS-2611-8899AA': 'NS-002',
+  'NS-2611-77CC11': 'NS-003',
+  'NS-2611-99DD44': 'NS-004',
+};
+
+const STORAGE_KEY_TICKET_MAP = 'naadansmash_ticket_format_map';
+
+function getTicketFormatMap(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_TICKET_MAP);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveTicketFormatMap(map: Record<string, string>) {
+  try {
+    localStorage.setItem(STORAGE_KEY_TICKET_MAP, JSON.stringify(map));
+  } catch {}
+}
+
+/**
+ * Format any ticket number to the clean NS-00X format (e.g. NS-001, NS-002, NS-024).
+ */
+export function formatDisplayTicketNumber(rawNum?: string | null): string {
+  if (!rawNum) return 'NS-001';
+  const trimmed = rawNum.trim();
+
+  // If already in clean NS-00X format (e.g. NS-001, NS-012, NS-999)
+  if (/^NS-\d{3,}$/i.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
+  // If short format like NS-1 or NS-12, pad to 3 digits
+  const shortMatch = trimmed.match(/^NS-(\d+)$/i);
+  if (shortMatch) {
+    return `NS-${shortMatch[1].padStart(3, '0')}`;
+  }
+
+  // Check known demo mapping
+  const upper = trimmed.toUpperCase();
+  if (OLD_DEMO_TICKETS[upper]) {
+    return OLD_DEMO_TICKETS[upper];
+  }
+
+  // Check persistent map
+  const map = getTicketFormatMap();
+  if (map[upper]) {
+    return map[upper];
+  }
+
+  // Otherwise allocate the next sequential ticket number
+  const nextNum = generateTicketNumber();
+  map[upper] = nextNum;
+  saveTicketFormatMap(map);
+  return nextNum;
+}
+
+/**
+ * Reverse-lookup raw Supabase / legacy registration number from a formatted NS-00X ticket.
+ */
+export function getRawSupabaseReg(formattedNum: string): string | null {
+  const upper = formattedNum.trim().toUpperCase();
+  for (const [raw, formatted] of Object.entries(OLD_DEMO_TICKETS)) {
+    if (formatted.toUpperCase() === upper) return raw;
+  }
+  const map = getTicketFormatMap();
+  for (const [raw, formatted] of Object.entries(map)) {
+    if (formatted.toUpperCase() === upper) return raw;
+  }
+  return null;
+}
+
+/**
+ * Generates the next sequential registration number in NS-00X format (e.g. NS-005, NS-006, ...).
+ */
+export function generateTicketNumber(): string {
+  let maxNum = 4; // Seed registrations are NS-001 to NS-004
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_REGISTRATIONS);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        for (const r of parsed) {
+          const num = r.registration_number || '';
+          const match = num.match(/^NS-0*(\d+)$/i);
+          if (match) {
+            const val = parseInt(match[1], 10);
+            if (!isNaN(val) && val > maxNum) maxNum = val;
+          }
+        }
+      }
+    }
+  } catch {}
+
+  try {
+    const savedTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
+    for (const item of savedTickets) {
+      const num = item.regNumber || '';
+      const match = num.match(/^NS-0*(\d+)$/i);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        if (!isNaN(val) && val > maxNum) maxNum = val;
+      }
+    }
+  } catch {}
+
+  const map = getTicketFormatMap();
+  for (const mapped of Object.values(map)) {
+    const match = mapped.match(/^NS-0*(\d+)$/i);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      if (!isNaN(val) && val > maxNum) maxNum = val;
+    }
+  }
+
+  const nextVal = maxNum + 1;
+  return `NS-${String(nextVal).padStart(3, '0')}`;
+}
+
 function getStoredRegistrations(): any[] {
   const map = new Map<string, any>();
   for (const r of DEFAULT_TEST_REGISTRATIONS) {
-    map.set(r.registration_number, { ...r });
+    const formatted = formatDisplayTicketNumber(r.registration_number);
+    map.set(formatted, { ...r, registration_number: formatted });
   }
 
   try {
@@ -199,8 +324,10 @@ function getStoredRegistrations(): any[] {
       if (Array.isArray(parsed)) {
         for (const p of parsed) {
           if (p && p.registration_number) {
-            const existing = map.get(p.registration_number);
-            map.set(p.registration_number, existing ? { ...existing, ...p } : p);
+            const formatted = formatDisplayTicketNumber(p.registration_number);
+            const item = { ...p, registration_number: formatted };
+            const existing = map.get(formatted);
+            map.set(formatted, existing ? { ...existing, ...item } : item);
           }
         }
       }
@@ -435,9 +562,11 @@ export const eventsService = {
             };
           }
 
+          const displayRegNumber = formatDisplayTicketNumber(data.registration_number);
+
           const newPlayerRecord: any = {
             id: data.id || `reg-${Date.now()}`,
-            registration_number: data.registration_number,
+            registration_number: displayRegNumber,
             event_id: payload.eventId,
             full_name: payload.fullName,
             email: payload.email,
@@ -463,7 +592,7 @@ export const eventsService = {
               emailResult = await emailService.sendRegistrationReceivedEmail({
                 fullName: payload.fullName,
                 email: payload.email,
-                registrationNumber: data.registration_number,
+                registrationNumber: displayRegNumber,
                 eventTitle: targetEvent?.title || 'Weekend Badminton Session',
                 eventDate: targetEvent?.event_date || 'Upcoming Weekend',
                 startTime: targetEvent?.start_time || '17:30',
@@ -488,7 +617,7 @@ export const eventsService = {
           }
 
           const currentList = getStoredRegistrations();
-          if (!currentList.some((r: any) => r.registration_number === data.registration_number)) {
+          if (!currentList.some((r: any) => r.registration_number === displayRegNumber)) {
             currentList.unshift(newPlayerRecord);
             saveStoredRegistrations(currentList);
           }
@@ -496,7 +625,7 @@ export const eventsService = {
           return {
             success: true,
             message: statusMessage,
-            registrationNumber: data.registration_number,
+            registrationNumber: displayRegNumber,
             registrationId: data.id,
             registrationStatus,
             remainingSlots: data.remaining_slots,
@@ -556,8 +685,8 @@ export const eventsService = {
       return { success: false, message: 'This event has reached full capacity.' };
     }
 
-    // Generate unique registration number
-    const regNumber = `NS-${new Date().toISOString().slice(2, 7).replace('-', '')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    // Generate unique sequential registration number in NS-00X format
+    const regNumber = generateTicketNumber();
     const newReg: any = {
       id: `reg-${Date.now()}`,
       registration_number: regNumber,
@@ -646,19 +775,28 @@ export const eventsService = {
     registration?: any;
     message?: string;
   }> {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const cleanReg = registrationNumber.trim().toUpperCase();
+    const rawSupabaseReg = getRawSupabaseReg(cleanReg);
+
     if (isSupabaseConfigured && supabase) {
       try {
+        const regToQuery = rawSupabaseReg || cleanReg;
         const { data, error } = await supabase.rpc('lookup_registration', {
-          p_registration_number: registrationNumber,
+          p_registration_number: regToQuery,
           p_phone: phone,
         });
 
         if (!error && data && data.found) {
+          const displayReg = formatDisplayTicketNumber(data.registration.registration_number);
+          data.registration.registration_number = displayReg;
+
           const localList = getStoredRegistrations();
-          const cleanPhone = phone.replace(/[^0-9]/g, '');
           const localMatch = localList.find(
             (r: any) =>
-              r.registration_number?.toUpperCase() === registrationNumber.trim().toUpperCase() &&
+              (r.registration_number?.toUpperCase() === displayReg.toUpperCase() ||
+               r.registration_number?.toUpperCase() === cleanReg ||
+               (rawSupabaseReg && r.registration_number?.toUpperCase() === rawSupabaseReg.toUpperCase())) &&
               (r.phone === cleanPhone || r.phone.endsWith(cleanPhone) || cleanPhone.endsWith(r.phone))
           );
           if (localMatch) {
@@ -678,12 +816,17 @@ export const eventsService = {
       }
     }
 
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
     const storedRegs = getStoredRegistrations();
     const match = storedRegs.find(
-      (r: any) =>
-        r.registration_number.toUpperCase() === registrationNumber.trim().toUpperCase() &&
-        (r.phone === cleanPhone || r.phone.endsWith(cleanPhone) || cleanPhone.endsWith(r.phone))
+      (r: any) => {
+        const itemReg = formatDisplayTicketNumber(r.registration_number).toUpperCase();
+        const matchesReg = itemReg === cleanReg ||
+                           r.registration_number?.toUpperCase() === cleanReg ||
+                           (rawSupabaseReg && r.registration_number?.toUpperCase() === rawSupabaseReg.toUpperCase());
+        const itemPhone = r.phone?.replace(/[^0-9]/g, '') || '';
+        const matchesPhone = itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone);
+        return matchesReg && matchesPhone;
+      }
     );
 
     if (match) {
@@ -701,6 +844,7 @@ export const eventsService = {
         found: true,
         registration: {
           ...match,
+          registration_number: formatDisplayTicketNumber(match.registration_number),
           registration_status: computedStatus,
           rejection_reason: match.rejection_reason || undefined,
           email_notifications: match.email_notifications || undefined,
@@ -875,14 +1019,15 @@ export const eventsService = {
    */
   recordPlayerTicket(registrationNumber: string, phone: string, eventId: string): void {
     try {
+      const formatted = formatDisplayTicketNumber(registrationNumber);
       const cleanPhone = phone.replace(/\D/g, '').slice(-10);
       const existing = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
       const alreadyHas = existing.some(
-        (t: any) => t.regNumber?.toUpperCase() === registrationNumber.toUpperCase()
+        (t: any) => formatDisplayTicketNumber(t.regNumber).toUpperCase() === formatted.toUpperCase()
       );
       if (!alreadyHas) {
         existing.unshift({
-          regNumber: registrationNumber.toUpperCase(),
+          regNumber: formatted.toUpperCase(),
           phone: cleanPhone,
           eventId,
           timestamp: new Date().toISOString(),
@@ -907,8 +1052,11 @@ export const eventsService = {
       const savedTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
       for (const item of savedTickets) {
         if (item.phone === cleanPhone || item.phone?.endsWith(cleanPhone) || cleanPhone.endsWith(item.phone)) {
-          if (item.regNumber && !seenRegs.has(item.regNumber.toUpperCase())) {
-            seenRegs.add(item.regNumber.toUpperCase());
+          if (item.regNumber) {
+            const formatted = formatDisplayTicketNumber(item.regNumber);
+            if (!seenRegs.has(formatted.toUpperCase())) {
+              seenRegs.add(formatted.toUpperCase());
+            }
           }
         }
       }
@@ -917,8 +1065,11 @@ export const eventsService = {
       for (const reg of storedRegs) {
         const regPhone = reg.phone?.replace(/\D/g, '').slice(-10);
         if (regPhone === cleanPhone) {
-          if (reg.registration_number && !seenRegs.has(reg.registration_number.toUpperCase())) {
-            seenRegs.add(reg.registration_number.toUpperCase());
+          if (reg.registration_number) {
+            const formatted = formatDisplayTicketNumber(reg.registration_number);
+            if (!seenRegs.has(formatted.toUpperCase())) {
+              seenRegs.add(formatted.toUpperCase());
+            }
           }
         }
       }
@@ -931,6 +1082,7 @@ export const eventsService = {
       try {
         const res = await this.lookupRegistration(regNo, cleanPhone);
         if (res.found && res.registration) {
+          res.registration.registration_number = formatDisplayTicketNumber(res.registration.registration_number);
           tickets.push(res.registration);
         }
       } catch (err) {
@@ -1260,14 +1412,20 @@ export const eventsService = {
         }
         const { data, error } = await query;
         if (!error && data && data.length > 0) {
-          return data;
+          return data.map((r: any) => ({
+            ...r,
+            registration_number: formatDisplayTicketNumber(r.registration_number),
+          }));
         }
       } catch (e) {
         console.warn('Supabase getEventRegistrations query error', e);
       }
     }
 
-    const localList = getStoredRegistrations();
+    const localList = getStoredRegistrations().map((r: any) => ({
+      ...r,
+      registration_number: formatDisplayTicketNumber(r.registration_number),
+    }));
     if (eventId) {
       return localList.filter((r: any) => r.event_id === eventId);
     }
@@ -1320,12 +1478,19 @@ export const eventsService = {
   ): Promise<{ success: boolean; message: string; registration?: any }> {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     const cleanReg = registrationNumber.trim().toUpperCase();
+    const rawSupabaseReg = getRawSupabaseReg(cleanReg);
 
     const list = getStoredRegistrations();
     const index = list.findIndex(
-      (r: any) =>
-        r.registration_number?.toUpperCase() === cleanReg &&
-        (r.phone === cleanPhone || r.phone.endsWith(cleanPhone) || cleanPhone.endsWith(r.phone))
+      (r: any) => {
+        const itemReg = formatDisplayTicketNumber(r.registration_number).toUpperCase();
+        const matchesReg = itemReg === cleanReg ||
+                           r.registration_number?.toUpperCase() === cleanReg ||
+                           (rawSupabaseReg && r.registration_number?.toUpperCase() === rawSupabaseReg.toUpperCase());
+        const itemPhone = r.phone?.replace(/[^0-9]/g, '') || '';
+        const matchesPhone = itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone);
+        return matchesReg && matchesPhone;
+      }
     );
 
     if (index < 0) {
