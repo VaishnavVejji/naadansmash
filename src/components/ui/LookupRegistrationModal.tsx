@@ -37,13 +37,11 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
   onJoinClick,
 }) => {
   // State
-  const [phone, setPhone] = useState('');
-  const [regNumber, setRegNumber] = useState('');
+  const [query, setQuery] = useState('');
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [userTickets, setUserTickets] = useState<any[]>([]);
-  const [showManualSearch, setShowManualSearch] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
 
@@ -60,14 +58,14 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
   const [copiedReg, setCopiedReg] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
 
-  // Initialize and auto-search if a phone number is remembered
+  // Initialize and auto-search if a phone number or ticket is remembered
   useEffect(() => {
     if (isOpen) {
       eventsService.getPaymentSettings().then(setPaymentSettings);
       const savedPhone = playerPhone || localStorage.getItem('naadansmash_last_phone') || '';
       if (savedPhone) {
         const clean = savedPhone.replace(/\D/g, '').slice(-10);
-        setPhone(clean);
+        setQuery(clean);
         // Auto-query remembered phone
         setLoading(true);
         setSearched(true);
@@ -87,7 +85,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
         });
       } else {
         // Reset to initial search state
-        setPhone('');
+        setQuery('');
         setResult(null);
         setUserTickets([]);
         setSearched(false);
@@ -100,12 +98,12 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
   if (!isOpen) return null;
 
   // Handlers
-  const handlePhoneSearch = async (e?: React.FormEvent) => {
+  const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    const cleanInput = query.trim();
 
-    if (!cleanPhone || cleanPhone.length !== 10) {
-      setErrorMsg('Please enter a valid 10-digit mobile number.');
+    if (!cleanInput) {
+      setErrorMsg('Please enter your mobile number or registration ID.');
       return;
     }
 
@@ -114,49 +112,39 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
     setSearched(true);
     setResult(null);
 
+    const digitsOnly = cleanInput.replace(/\D/g, '');
+    const isPhone = digitsOnly.length >= 10 && !cleanInput.toUpperCase().startsWith('NS-');
+
     try {
-      const tickets = await eventsService.getUserTickets(cleanPhone);
-      setUserTickets(tickets);
-      if (tickets.length > 0) {
-        setResult(tickets[0]);
-        localStorage.setItem('naadansmash_last_phone', cleanPhone);
+      if (isPhone) {
+        const cleanPhone = digitsOnly.slice(-10);
+        const tickets = await eventsService.getUserTickets(cleanPhone);
+        setUserTickets(tickets);
+        if (tickets.length > 0) {
+          setResult(tickets[0]);
+          localStorage.setItem('naadansmash_last_phone', cleanPhone);
+        } else {
+          setResult(null);
+        }
       } else {
-        setResult(null);
+        // Search by registration number (NS-001 or raw)
+        const res = await eventsService.lookupRegistration(cleanInput);
+        if (res.found && res.registration) {
+          setResult(res.registration);
+          setUserTickets([res.registration]);
+          if (res.registration.phone) {
+            const p = res.registration.phone.replace(/\D/g, '').slice(-10);
+            if (p) localStorage.setItem('naadansmash_last_phone', p);
+          }
+        } else {
+          setUserTickets([]);
+          setResult(null);
+        }
       }
     } catch {
       setUserTickets([]);
       setResult(null);
       setErrorMsg('Failed to retrieve tickets. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManualLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regNumber.trim() || !phone.trim()) {
-      setErrorMsg('Please enter both your Registration Number and Phone Number.');
-      return;
-    }
-
-    setLoading(true);
-    setErrorMsg('');
-    setResult(null);
-    setSearched(true);
-
-    try {
-      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-      const res = await eventsService.lookupRegistration(regNumber.trim(), cleanPhone);
-      if (res.found && res.registration) {
-        setResult(res.registration);
-        setUserTickets([res.registration]);
-        localStorage.setItem('naadansmash_last_phone', cleanPhone);
-      } else {
-        setErrorMsg(res.message || 'No matching registration found. Please verify your details.');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lookup failed';
-      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -212,7 +200,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
     try {
       const res = await eventsService.submitPaymentDetails(
         result.registration_number,
-        phone,
+        result.phone || query,
         inlineUtr.trim(),
         inlineScreenshot || undefined
       );
@@ -255,7 +243,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
   const resetAndClose = () => {
     setResult(null);
     setErrorMsg('');
-    setRegNumber('');
+    setQuery('');
     setInlineUtr('');
     setInlineScreenshot(null);
     setInlineScreenshotName('');
@@ -322,7 +310,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
             <div className="py-20 text-center animate-fade-in">
               <div className="w-12 h-12 rounded-full border-3 border-brand-teal/20 border-t-brand-teal animate-spin mx-auto mb-4" />
               <div className="text-xs font-mono uppercase tracking-widest text-brand-charcoal font-semibold">
-                Searching registrations for +91 {phone || '...'}
+                Searching registrations for {query.trim() || '...'}
               </div>
               <p className="text-[11px] text-brand-muted mt-1">Retrieving live match passes from database...</p>
             </div>
@@ -501,7 +489,7 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                 </span>
                 <div className="inline-block p-3 rounded-xl bg-white border border-black/[0.08] shadow-xs">
                   <QRCodeSVG
-                    value={`NAADANSMASH:${result.registration_number}:${result.phone || phone}`}
+                    value={`NAADANSMASH:${result.registration_number}:${result.phone || query}`}
                     size={130}
                     level="H"
                   />
@@ -705,21 +693,20 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                 </a>
               </div>
 
-              {/* Check Another Mobile Number */}
+              {/* Check Another Mobile Number / Ticket */}
               <button
                 type="button"
                 onClick={() => {
                   setResult(null);
                   setSearched(false);
-                  setShowManualSearch(false);
                 }}
                 className="w-full py-3 rounded-full bg-brand-offwhite hover:bg-black/[0.04] text-brand-charcoal text-xs font-mono uppercase tracking-wider font-semibold border border-black/[0.08] transition-colors"
               >
-                ← Check Another Mobile Number
+                ← Check Another Number / Ticket ID
               </button>
             </div>
-          ) : searched && userTickets.length === 0 && !showManualSearch ? (
-            /* STATE 3: NO TICKETS FOUND FOR THIS MOBILE NUMBER */
+          ) : searched && userTickets.length === 0 ? (
+            /* STATE 3: NO TICKETS FOUND FOR THIS INPUT */
             <div className="text-center py-10 px-4 animate-fade-in">
               <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-4 shadow-xs">
                 <AlertCircle className="w-8 h-8" />
@@ -728,10 +715,16 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                 No Tickets Registered
               </span>
               <h4 className="font-heading font-extrabold text-xl sm:text-2xl text-brand-black uppercase leading-tight">
-                This mobile number is not registered with an event.
+                {query.replace(/\D/g, '').length >= 10
+                  ? 'This mobile number is not registered with an event.'
+                  : 'This registration ID is not registered with an event.'}
               </h4>
               <p className="text-xs text-brand-charcoal/80 mt-2 max-w-sm mx-auto leading-relaxed mb-6">
-                We could not find any active session registrations for <strong className="text-brand-black font-mono">+91 {phone}</strong>. Reserve your spot for the upcoming weekend session now!
+                We could not find any active session registrations for{' '}
+                <strong className="text-brand-black font-mono">
+                  {query.replace(/\D/g, '').length >= 10 ? `+91 ${query.replace(/\D/g, '').slice(-10)}` : query}
+                </strong>
+                . Reserve your spot for the upcoming weekend session now!
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -753,89 +746,17 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                     setSearched(false);
                     setUserTickets([]);
                     setResult(null);
+                    setQuery('');
                   }}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-brand-offwhite hover:bg-black/10 text-brand-charcoal font-heading font-medium text-xs uppercase tracking-wider transition-colors border border-black/[0.08]"
                 >
-                  <span>Check Another Number</span>
-                </button>
-              </div>
-
-              <div className="pt-6 mt-8 border-t border-black/[0.06]">
-                <button
-                  type="button"
-                  onClick={() => setShowManualSearch(true)}
-                  className="text-xs font-mono text-brand-teal hover:underline inline-flex items-center gap-1.5"
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  <span>Have a Registration Number? Search manually →</span>
+                  <span>Check Another Number / Ticket</span>
                 </button>
               </div>
             </div>
-          ) : showManualSearch ? (
-            /* STATE 4: MANUAL 1-TO-1 LOOKUP (REGISTRATION NUMBER + PHONE) */
-            <form onSubmit={handleManualLookup} className="space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-brand-charcoal/80 leading-relaxed">
-                  Enter your unique Registration Number and registered mobile number.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowManualSearch(false);
-                    setSearched(false);
-                  }}
-                  className="text-[11px] font-mono text-brand-teal hover:underline shrink-0"
-                >
-                  ← Phone Lookup
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1">
-                  Registration Number *
-                </label>
-                <input
-                  type="text"
-                  value={regNumber}
-                  onChange={(e) => setRegNumber(e.target.value)}
-                  required
-                  placeholder="e.g. NS-001"
-                  className="w-full px-4 py-2.5 rounded-xl bg-brand-offwhite border border-black/[0.08] text-sm font-mono uppercase focus:border-brand-teal outline-none"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1">
-                  Phone / WhatsApp Number *
-                </label>
-                <div className="flex rounded-xl overflow-hidden border border-black/[0.12] bg-white focus-within:border-brand-teal transition-all">
-                  <span className="inline-flex items-center px-3 bg-brand-offwhite border-r border-black/[0.08] text-xs font-mono font-bold text-brand-charcoal select-none">
-                    🇮🇳 +91
-                  </span>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    required
-                    placeholder="9876543210"
-                    className="w-full px-3.5 py-2.5 text-sm font-mono tracking-wider text-brand-black bg-transparent outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white text-xs font-mono uppercase tracking-widest font-semibold transition-all disabled:opacity-50 shadow-sm"
-              >
-                {loading ? 'Verifying Participant Record...' : 'Access My Confirmation'}
-              </button>
-            </form>
           ) : (
-            /* STATE 5: INITIAL PHONE NUMBER ENTRY PROMPT */
-            <form onSubmit={handlePhoneSearch} className="space-y-5 animate-fade-in py-2">
+            /* STATE 4: INITIAL SEARCH ENTRY PROMPT (MOBILE NUMBER OR REGISTRATION ID) */
+            <form onSubmit={handleSearch} className="space-y-5 animate-fade-in py-2">
               <div className="text-center max-w-sm mx-auto mb-2">
                 <div className="w-14 h-14 rounded-2xl bg-brand-teal/10 border border-brand-teal/20 text-brand-teal flex items-center justify-center mx-auto mb-3 shadow-xs">
                   <Ticket className="w-7 h-7" />
@@ -844,49 +765,41 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                   View Your Match Tickets
                 </h4>
                 <p className="text-xs text-brand-charcoal/80 mt-1 leading-relaxed">
-                  Enter your registered 10-digit mobile number to view your court pass and live verification status.
+                  Enter your registered 10-digit mobile number or official Registration ID (e.g. NS-001) to view your court pass across all devices.
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-charcoal mb-1.5">
-                  Mobile / WhatsApp Number
+                  Mobile Number or Registration ID
                 </label>
                 <div className="flex rounded-xl overflow-hidden border border-black/[0.12] bg-white focus-within:border-brand-teal transition-all shadow-xs">
                   <span className="inline-flex items-center px-3.5 bg-brand-offwhite border-r border-black/[0.08] text-xs font-mono font-bold text-brand-charcoal select-none">
-                    🇮🇳 +91
+                    {query.trim().toUpperCase().startsWith('NS') ? '🎟 PASS' : '🇮🇳 +91'}
                   </span>
                   <input
-                    type="tel"
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
                     required
-                    placeholder="9876543210"
-                    className="w-full px-3.5 py-3 text-base font-mono tracking-wider text-brand-black bg-transparent outline-none"
+                    placeholder="e.g. 9876543210 or NS-001"
+                    className="w-full px-3.5 py-3 text-base font-mono tracking-wider text-brand-black bg-transparent outline-none uppercase placeholder:normal-case"
                     autoFocus
                   />
                 </div>
+                <p className="text-[11px] text-brand-muted mt-1.5 font-mono">
+                  Works across your mobile phone, laptop, or tablet.
+                </p>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || phone.replace(/\D/g, '').length < 10}
+                disabled={loading || !query.trim()}
                 className="w-full py-3.5 rounded-full bg-brand-teal hover:bg-[#126f8c] disabled:bg-black/20 text-white font-heading font-semibold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" />
-                <span>Find My Tickets</span>
+                <span>Find My Match Ticket</span>
               </button>
-
-              <div className="pt-4 border-t border-black/[0.06] text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowManualSearch(true)}
-                  className="text-xs font-mono text-brand-teal hover:underline inline-flex items-center gap-1.5"
-                >
-                  <span>Have a Registration Number? Search manually →</span>
-                </button>
-              </div>
             </form>
           )}
         </div>

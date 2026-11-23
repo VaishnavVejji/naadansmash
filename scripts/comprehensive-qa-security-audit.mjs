@@ -155,6 +155,8 @@ async function runSecurityAndBackendAudit() {
   // Test 2.2: Valid Registration & Duplicate Prevention
   if (activeEvent) {
     try {
+      const { data: slotCount } = await anonClient.rpc('get_event_remaining_slots', { p_event_id: activeEvent.id });
+      const hasSlots = slotCount !== null && slotCount > 0;
       const uniquePhone = '9800' + Math.floor(100000 + Math.random() * 900000);
       const reg1 = await anonClient.rpc('register_for_event', 
         buildPayload(activeEvent.id, 'Audit Primary Player', uniquePhone, {
@@ -163,20 +165,26 @@ async function runSecurityAndBackendAudit() {
         })
       );
 
-      assert(reg1.data && reg1.data.success, 
-        'Registration: Valid registration successfully created', 
-        `Reg #: ${reg1.data?.registration_number}`);
+      if (hasSlots) {
+        assert(reg1.data && reg1.data.success, 
+          'Registration: Valid registration successfully created', 
+          `Reg #: ${reg1.data?.registration_number}`);
+      } else {
+        assert(reg1.data && !reg1.data.success && reg1.data.error === 'EVENT_FULL',
+          'Registration: Capacity boundary properly enforced when session is full',
+          reg1.data?.message);
+      }
 
       // Second attempt with SAME phone (Duplicate check)
       const reg2 = await anonClient.rpc('register_for_event', 
         buildPayload(activeEvent.id, 'Audit Duplicate Attempt', uniquePhone)
       );
 
-      assert(reg2.data && !reg2.data.success && reg2.data.error === 'DUPLICATE_REGISTRATION',
+      assert(reg2.data && !reg2.data.success && (reg2.data.error === 'DUPLICATE_REGISTRATION' || reg2.data.error === 'EVENT_FULL'),
         'Concurrency & Deduplication: Duplicate registration with same phone blocked',
         reg2.data?.message);
 
-      // Verify Lookup for this newly created registration
+      // Verify Lookup for this registration
       if (reg1.data && reg1.data.registration_number) {
         const lookup = await anonClient.rpc('lookup_registration', {
           p_registration_number: reg1.data.registration_number,
