@@ -27,7 +27,8 @@ import {
   Smartphone,
   KeyRound,
   RotateCw,
-  ArrowLeft
+  ArrowLeft,
+  Trash2
 } from 'lucide-react';
 import { DatabaseEvent, PaymentStatus, AttendanceStatus } from '../../types';
 import { eventsService } from '../../services/eventsService';
@@ -321,6 +322,55 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       setRejectingPlayer(null);
     } finally {
       setRejectionSubmitting(false);
+    }
+  };
+
+  const handleDeleteRegistration = async (regId: string, playerName: string, playerPhone?: string) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${playerName}'s registration? This will permanently remove it from the roster and free phone number (${playerPhone}) so they can register again for future sessions.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const ok = await eventsService.deleteRegistration(regId, playerPhone);
+      if (ok) {
+        setRegistrations((prev) => prev.filter((r) => r.id !== regId));
+        setFeedbackBanner({
+          message: `✓ Registration for ${playerName} removed. Phone ${playerPhone} can now register again.`,
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 4000);
+        onEventUpdated();
+      } else {
+        alert('Failed to delete registration');
+      }
+    } catch {
+      alert('An error occurred while deleting the registration.');
+    }
+  };
+
+  const handleClearSessionRegistrations = async () => {
+    if (!selectedEventId) return;
+    const confirmClear = window.confirm(
+      `⚠️ RESET ROSTER WARNING:\nAre you sure you want to clear ALL ${registrations.length} registrations for this event?\n\nThis will remove every participant for this session, reset all slot reservations, and free all phone numbers so they can register again for the next session.`
+    );
+    if (!confirmClear) return;
+
+    try {
+      const ok = await eventsService.clearEventRegistrations(selectedEventId);
+      if (ok) {
+        setRegistrations([]);
+        setFeedbackBanner({
+          message: `✓ Event roster reset. All registrations cleared and phone numbers freed for the next session!`,
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 5000);
+        onEventUpdated();
+      } else {
+        alert('Failed to clear session registrations');
+      }
+    } catch {
+      alert('An error occurred while resetting the session roster.');
     }
   };
 
@@ -932,15 +982,29 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleExportCSV}
-                      className="px-4 py-2 rounded-xl bg-brand-offwhite border border-black/[0.08] hover:bg-black/[0.04] text-brand-black text-xs font-mono font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shrink-0 shadow-2xs"
-                      title="Download court roster as CSV"
-                    >
-                      <Download className="w-3.5 h-3.5 text-brand-teal" />
-                      <span>Export CSV</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="px-3.5 py-2 rounded-xl bg-brand-offwhite border border-black/[0.08] hover:bg-black/[0.04] text-brand-black text-xs font-mono font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                        title="Download court roster as CSV"
+                      >
+                        <Download className="w-3.5 h-3.5 text-brand-teal" />
+                        <span>Export CSV</span>
+                      </button>
+
+                      {registrations.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearSessionRegistrations}
+                          className="px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-800 text-xs font-mono font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                          title="Reset event roster to clear all registrations and free phone numbers for next event"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Reset Roster</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Player Roster List */}
@@ -1117,6 +1181,16 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                                 ✗ Reject
                               </button>
                             </div>
+
+                            {/* Delete Registration (frees phone number for next event) */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRegistration(player.id, player.full_name, player.phone)}
+                              className="p-2 rounded-lg bg-brand-offwhite border border-black/[0.08] hover:text-rose-700 hover:bg-rose-50 transition-colors text-brand-muted"
+                              title="Delete registration (frees phone number to re-register)"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-500" />
+                            </button>
                           </div>
                         </div>
                       ))}

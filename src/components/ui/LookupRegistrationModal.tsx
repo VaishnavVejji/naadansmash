@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Search, 
@@ -12,7 +12,8 @@ import {
   Check, 
   ExternalLink, 
   FileText,
-  Smartphone,
+  Upload,
+  Trash2,
   ArrowRight,
   Ticket
 } from 'lucide-react';
@@ -48,6 +49,8 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
   // In-modal payment details submission (for 'received' and 'rejected' states)
   const [inlineUtr, setInlineUtr] = useState('');
   const [inlineScreenshot, setInlineScreenshot] = useState<string | null>(null);
+  const [inlineScreenshotName, setInlineScreenshotName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [inlineSubmitting, setInlineSubmitting] = useState(false);
   const [inlineSubmitError, setInlineSubmitError] = useState('');
   const [inlineSubmitSuccess, setInlineSubmitSuccess] = useState('');
@@ -91,34 +94,6 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
       }
     }
   }, [isOpen, playerPhone]);
-
-  // Derived UPI URIs
-  const gpayUri = useMemo(() => {
-    if (!paymentSettings?.upi_id || !result) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
-    const am = encodeURIComponent((result.registration_fee || 250).toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
-    return `tez://upi/pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, result]);
-
-  const phonepeUri = useMemo(() => {
-    if (!paymentSettings?.upi_id || !result) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
-    const am = encodeURIComponent((result.registration_fee || 250).toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
-    return `phonepe://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, result]);
-
-  const paytmUri = useMemo(() => {
-    if (!paymentSettings?.upi_id || !result) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name || 'Sivaram P Babu');
-    const am = encodeURIComponent((result.registration_fee || 250).toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${result.registration_number}`);
-    return `paytmmp://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, result]);
 
   // Do not render if modal is not open
   if (!isOpen) return null;
@@ -186,10 +161,45 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
     }
   };
 
+  const handleInlineScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setInlineSubmitError('Invalid file format. Please upload a PNG, JPG, or WEBP image.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setInlineSubmitError('Image size should be less than 5MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setInlineScreenshotName(file.name);
+    setInlineSubmitError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setInlineScreenshot(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveInlineScreenshot = () => {
+    setInlineScreenshot(null);
+    setInlineScreenshotName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleInlineSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inlineUtr.trim()) {
-      setInlineSubmitError('Please enter your 12-digit UPI transaction reference (UTR).');
+    if (!inlineScreenshot && !inlineUtr.trim()) {
+      setInlineSubmitError('Please attach a photo screenshot of your payment or enter your 12-digit UTR.');
       return;
     }
 
@@ -208,11 +218,12 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
       );
 
       if (res.success) {
-        setInlineSubmitSuccess('✓ Payment details submitted! Your status is now "Payment Submitted" awaiting verification.');
+        setInlineSubmitSuccess('✓ Payment details submitted for organiser approval!');
         // Refresh ticket view
         setResult((prev: any) => ({
           ...prev,
-          utr_reference: inlineUtr.trim(),
+          utr_reference: inlineUtr.trim() || prev?.utr_reference,
+          payment_screenshot_path: inlineScreenshot || prev?.payment_screenshot_path,
           registration_status: 'payment_submitted',
         }));
       } else {
@@ -247,6 +258,10 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
     setRegNumber('');
     setInlineUtr('');
     setInlineScreenshot(null);
+    setInlineScreenshotName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setInlineSubmitError('');
     setInlineSubmitSuccess('');
     onClose();
@@ -506,54 +521,67 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                     </h4>
                   </div>
 
-                  {/* 1-Tap Mobile GPay / UPI Links */}
-                  <div className="space-y-2">
-                    <a
-                      href={gpayUri}
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#0F9D58] hover:bg-[#0c8047] text-white font-heading font-semibold text-xs uppercase tracking-wider flex items-center justify-between shadow-xs transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="w-4 h-4 text-white" />
-                        <span>Pay ₹{result.registration_fee || 250} with Google Pay</span>
+                  {/* Organiser UPI QR Code and Account Info */}
+                  <div className="p-4 rounded-2xl bg-brand-offwhite border border-black/[0.08] flex flex-col sm:flex-row items-center gap-4">
+                    <div className="shrink-0 p-2.5 bg-white rounded-2xl border border-black/[0.08] shadow-xs flex flex-col items-center">
+                      <div className="w-32 h-32 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
+                        <img
+                          src={paymentSettings.qr_image_path || '/images/qr.jpeg'}
+                          alt="Official UPI QR Code"
+                          className="w-full h-full object-contain"
+                        />
                       </div>
-                      <span className="text-[10px] font-mono bg-white/20 px-2 py-0.5 rounded-full">
-                        Open GPay →
+                      <span className="text-[9px] font-mono font-bold tracking-wider text-brand-charcoal/70 uppercase mt-1.5">
+                        Scan with Any UPI App
                       </span>
-                    </a>
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono font-bold">
-                      <a
-                        href={phonepeUri}
-                        className="py-2 px-2 rounded-xl bg-[#5f259f] hover:bg-[#4d1d82] text-white transition-colors"
-                      >
-                        PhonePe
-                      </a>
-                      <a
-                        href={paytmUri}
-                        className="py-2 px-2 rounded-xl bg-[#002e6e] hover:bg-[#002252] text-white transition-colors"
-                      >
-                        Paytm
-                      </a>
+                    <div className="flex-1 w-full space-y-2 text-xs">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-brand-muted block">
+                          Payee Name
+                        </span>
+                        <span className="font-semibold text-brand-black text-sm">
+                          {paymentSettings.account_display_name || 'Sivaram P Babu'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-brand-muted block">
+                          Official UPI ID
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono font-bold text-brand-black text-xs px-2.5 py-1 rounded-lg bg-white border border-black/[0.08] select-all">
+                            {paymentSettings.upi_id}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCopyUpi}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-black/[0.08] hover:bg-black/[0.04] text-[11px] font-mono font-medium text-brand-charcoal flex items-center gap-1.5 transition-colors"
+                          >
+                            {copiedUpi ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-700">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-brand-muted" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white border border-black/[0.06] text-[11px] font-mono text-brand-charcoal/90">
+                        Pay <strong>₹{result.registration_fee || 250}</strong> to the QR or UPI ID above, then attach your screenshot below.
+                      </div>
                     </div>
                   </div>
 
-                  {/* UPI ID Copy */}
-                  <div className="p-3 rounded-xl bg-brand-offwhite border border-black/[0.08] flex items-center justify-between text-xs font-mono">
-                    <div>
-                      <span className="text-brand-muted text-[10px] block">Official UPI ID</span>
-                      <strong className="text-brand-black">{paymentSettings.upi_id}</strong>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyUpi}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-black/[0.1] text-brand-teal text-[10px] font-bold uppercase hover:bg-black/5"
-                    >
-                      {copiedUpi ? 'Copied!' : 'Copy UPI'}
-                    </button>
-                  </div>
-
-                  {/* UTR Reference Submission */}
-                  <form onSubmit={handleInlineSubmitPayment} className="space-y-3 pt-2">
+                  {/* Submission Form: Screenshot + Optional UTR */}
+                  <form onSubmit={handleInlineSubmitPayment} className="space-y-3 pt-1">
                     {inlineSubmitSuccess && (
                       <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
                         {inlineSubmitSuccess}
@@ -565,26 +593,95 @@ export const LookupRegistrationModal: React.FC<LookupRegistrationModalProps> = (
                       </div>
                     )}
 
+                    {/* Screenshot Upload Dropzone */}
                     <div>
-                      <label className="block text-[11px] font-mono font-bold uppercase text-brand-charcoal mb-1">
-                        12-Digit Transaction Reference (UTR) *
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-charcoal">
+                          Payment Screenshot *
+                        </label>
+                        <span className="text-[10px] font-mono text-brand-teal font-semibold">
+                          PNG, JPG, WEBP (Max 5MB)
+                        </span>
+                      </div>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        onChange={handleInlineScreenshotChange}
+                        className="hidden"
+                        id="lookup-payment-screenshot"
+                      />
+
+                      {inlineScreenshot ? (
+                        <div className="p-3 bg-brand-offwhite rounded-xl border border-emerald-300 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-black/[0.08] bg-black/5">
+                              <img
+                                src={inlineScreenshot}
+                                alt="Payment Screenshot"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-mono font-bold text-emerald-800 truncate">
+                                {inlineScreenshotName || 'Payment Screenshot Attached'}
+                              </p>
+                              <span className="text-[10px] font-mono text-emerald-600 flex items-center gap-1 font-semibold">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                Ready to submit
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleRemoveInlineScreenshot}
+                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Remove screenshot"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="lookup-payment-screenshot"
+                          className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-brand-teal/40 hover:border-brand-teal hover:bg-black/[0.02] cursor-pointer transition-all text-center space-y-1 group"
+                        >
+                          <Upload className="w-5 h-5 text-brand-teal" />
+                          <span className="text-xs font-mono font-bold text-brand-teal uppercase tracking-wider">
+                            Upload Payment Screenshot
+                          </span>
+                          <span className="text-[10px] font-mono text-brand-muted">
+                            Screenshot of completed UPI payment
+                          </span>
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Optional 12-digit UTR */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-mono font-bold uppercase text-brand-charcoal">
+                          12-Digit UPI Reference Number (UTR)
+                        </label>
+                        <span className="text-[10px] font-mono text-brand-muted">Optional</span>
+                      </div>
                       <input
                         type="text"
                         value={inlineUtr}
-                        onChange={(e) => setInlineUtr(e.target.value)}
-                        placeholder="e.g. 432109876543 (from GPay / PhonePe)"
-                        required
+                        onChange={(e) => setInlineUtr(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                        placeholder="e.g. 432109876543"
                         className="w-full px-3 py-2 rounded-xl bg-brand-offwhite border border-black/[0.1] text-xs font-mono focus:border-brand-teal"
                       />
                     </div>
 
                     <button
                       type="submit"
-                      disabled={inlineSubmitting || !inlineUtr.trim()}
-                      className="w-full py-2.5 rounded-full bg-brand-teal hover:bg-[#126f8c] disabled:opacity-50 text-white text-xs font-mono uppercase tracking-wider font-semibold shadow-xs"
+                      disabled={inlineSubmitting || (!inlineScreenshot && !inlineUtr.trim())}
+                      className="w-full py-2.5 rounded-full bg-brand-teal hover:bg-[#126f8c] disabled:opacity-50 text-white text-xs font-mono uppercase tracking-wider font-semibold shadow-xs transition-colors"
                     >
-                      {inlineSubmitting ? 'Submitting Details...' : 'Submit Payment for Verification'}
+                      {inlineSubmitting ? 'Sending Payment Details...' : 'Send Payment for Approval'}
                     </button>
                   </form>
                 </div>

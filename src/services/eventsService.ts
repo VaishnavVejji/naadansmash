@@ -663,16 +663,19 @@ export const eventsService = {
       return { success: false, message: 'The registration deadline for this session has passed.' };
     }
 
-    // Check duplicate phone
-    const storedRegs = JSON.parse(localStorage.getItem(STORAGE_KEY_REGISTRATIONS) || '[]');
+    // Check duplicate phone (one registration per phone number per event session)
+    const storedRegs = getStoredRegistrations();
     const isDuplicate = storedRegs.some(
-      (r: any) => r.event_id === payload.eventId && r.phone.replace(/[^0-9]/g, '') === cleanPhone
+      (r: any) =>
+        r.event_id === payload.eventId &&
+        r.phone?.replace(/[^0-9]/g, '').slice(-10) === cleanPhone.slice(-10) &&
+        r.payment_status !== 'rejected'
     );
 
     if (isDuplicate) {
       return {
         success: false,
-        message: 'A registration with this phone number already exists for this session.',
+        message: 'A registration with this phone number already exists for this session. Check "My Tickets" to view your pass.',
       };
     }
 
@@ -1646,5 +1649,68 @@ export const eventsService = {
     }
 
     return { success: true, emailResult };
+  },
+
+  /**
+   * Delete / remove a registration (e.g. after an event or when resetting slots)
+   * so the phone number is freed to register again for the next session.
+   */
+  async deleteRegistration(regId: string, phone?: string): Promise<boolean> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('registrations').delete().eq('id', regId);
+        if (error) console.warn('Supabase delete registration error:', error);
+      } catch (e) {
+        console.warn('Supabase delete exception:', e);
+      }
+    }
+
+    try {
+      const list = getStoredRegistrations();
+      const updated = list.filter((r: any) => r.id !== regId);
+      saveStoredRegistrations(updated);
+
+      if (phone) {
+        const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+        const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
+        const filteredTickets = myTickets.filter((t: any) => {
+          const tPhone = (t.phone || '').replace(/\D/g, '').slice(-10);
+          return tPhone !== cleanPhone;
+        });
+        localStorage.setItem('naadansmash_my_tickets', JSON.stringify(filteredTickets));
+      }
+    } catch (e) {
+      console.warn('Local delete exception:', e);
+    }
+
+    return true;
+  },
+
+  /**
+   * Clear all registrations for an event session to reset the roster for the next event.
+   */
+  async clearEventRegistrations(eventId: string): Promise<boolean> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('registrations').delete().eq('event_id', eventId);
+        if (error) console.warn('Supabase clear event registrations error:', error);
+      } catch (e) {
+        console.warn('Supabase clear exception:', e);
+      }
+    }
+
+    try {
+      const list = getStoredRegistrations();
+      const updated = list.filter((r: any) => r.event_id !== eventId);
+      saveStoredRegistrations(updated);
+
+      const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
+      const filteredTickets = myTickets.filter((t: any) => t.eventId !== eventId);
+      localStorage.setItem('naadansmash_my_tickets', JSON.stringify(filteredTickets));
+    } catch (e) {
+      console.warn('Local clear exception:', e);
+    }
+
+    return true;
   },
 };

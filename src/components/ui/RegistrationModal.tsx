@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -11,13 +11,10 @@ import {
   Trash2, 
   Mail, 
   Clock, 
-  ShieldCheck, 
-  Smartphone
+  ShieldCheck
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { DatabaseEvent, SkillLevel, PaymentSettings, ParticipantRegistrationStatus } from '../../types';
 import { eventsService } from '../../services/eventsService';
-import { createWhatsAppLink } from '../../utils/whatsapp';
 import { EmailSendResult } from '../../services/emailService';
 
 interface RegistrationModalProps {
@@ -47,11 +44,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [screenshotName, setScreenshotName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Post-registration payment submission state
-  const [postUtr, setPostUtr] = useState('');
-  const [postSubmitting, setPostSubmitting] = useState(false);
-  const [postError, setPostError] = useState('');
-
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [successData, setSuccessData] = useState<{
@@ -77,50 +69,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       }
     }
   }, [isOpen, playerPhone]);
-
-  const upiPaymentUri = useMemo(() => {
-    if (!paymentSettings || !event) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name);
-    const am = encodeURIComponent(event.registration_fee.toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
-    return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, event]);
-
-  const gpayUri = useMemo(() => {
-    if (!paymentSettings || !event) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name);
-    const am = encodeURIComponent(event.registration_fee.toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
-    return `tez://upi/pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, event]);
-
-  const phonepeUri = useMemo(() => {
-    if (!paymentSettings || !event) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name);
-    const am = encodeURIComponent(event.registration_fee.toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
-    return `phonepe://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, event]);
-
-  const paytmUri = useMemo(() => {
-    if (!paymentSettings || !event) return '';
-    const pa = encodeURIComponent(paymentSettings.upi_id);
-    const pn = encodeURIComponent(paymentSettings.account_display_name);
-    const am = encodeURIComponent(event.registration_fee.toString());
-    const tn = encodeURIComponent(`NAADANSMASH - ${event.title}`);
-    return `paytmmp://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-  }, [paymentSettings, event]);
-
-  useEffect(() => {
-    if (isOpen) {
-      eventsService.getPaymentSettings().then((settings) => {
-        setPaymentSettings(settings);
-      });
-    }
-  }, [isOpen]);
 
   if (!isOpen || !event) return null;
 
@@ -194,6 +142,13 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       return;
     }
 
+    // Require photo screenshot or UTR proof of payment
+    if (!screenshotData && !utrReference.trim()) {
+      setErrorMsg('Please attach a photo screenshot of your payment before sending for approval.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await eventsService.registerPlayer({
         eventId: event.id,
@@ -215,7 +170,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           registrationNumber: res.registrationNumber,
           registrationId: res.registrationId,
           message: res.message,
-          registrationStatus: res.registrationStatus || (utrReference.trim() || screenshotData ? 'payment_submitted' : 'received'),
+          registrationStatus: 'payment_submitted',
           emailResult: res.emailResult,
           utr: utrReference.trim(),
         });
@@ -228,41 +183,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       setErrorMsg(msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePostRegistrationPaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!postUtr.trim()) {
-      setPostError('Please enter the 12-digit UPI UTR transaction reference number.');
-      return;
-    }
-    if (!successData?.registrationNumber) return;
-
-    setPostSubmitting(true);
-    setPostError('');
-
-    try {
-      const res = await eventsService.submitPaymentDetails(
-        successData.registrationNumber,
-        phone,
-        postUtr.trim()
-      );
-      if (res.success) {
-        setSuccessData((prev) => prev ? {
-          ...prev,
-          registrationStatus: 'payment_submitted',
-          utr: postUtr.trim(),
-          message: 'Your payment details have been submitted for verification.',
-        } : null);
-      } else {
-        setPostError(res.message);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit payment details';
-      setPostError(msg);
-    } finally {
-      setPostSubmitting(false);
     }
   };
 
@@ -318,9 +238,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     setPhone('');
     setEmail('');
     setAge('');
+    setGender('Male');
+    setSkillLevel('Intermediate');
     setUtrReference('');
-    setPostUtr('');
-    setPostError('');
     setScreenshotData(null);
     setScreenshotName('');
     if (fileInputRef.current) {
@@ -361,45 +281,26 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         {/* Content */}
         <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
           {successData ? (
-            <div className="text-center py-4 animate-fade-in">
-              {/* STATE 1: PAYMENT SUBMITTED */}
-              {successData.registrationStatus === 'payment_submitted' ? (
-                <div>
-                  <div className="w-16 h-16 rounded-full bg-amber-500 text-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <Clock className="w-9 h-9" />
-                  </div>
-                  <div className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-3">
-                    PAYMENT SUBMITTED
-                  </div>
-                  <h4 className="font-heading font-extrabold text-2xl sm:text-3xl text-brand-black mb-2 uppercase leading-tight">
-                    Your payment details have been submitted for verification.
-                  </h4>
-                  <p className="text-sm text-brand-charcoal/80 mb-6 max-w-md mx-auto leading-relaxed">
-                    Thank you, <strong>{fullName}</strong>. We have received your 12-digit UTR transaction details. Our organisers verify bank credits before match time.
-                  </p>
+            <div className="text-center py-4 animate-fade-in space-y-5">
+              <div>
+                <div className="w-16 h-16 rounded-full bg-amber-500 text-white flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <Clock className="w-9 h-9" />
                 </div>
-              ) : (
-                /* STATE 2: REGISTRATION RECEIVED */
-                <div>
-                  <div className="w-16 h-16 rounded-full bg-brand-teal text-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <CheckCircle2 className="w-9 h-9" />
-                  </div>
-                  <div className="inline-block px-3 py-1 rounded-full bg-teal-50 text-brand-teal border border-teal-200 text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-3">
-                    REGISTRATION RECEIVED
-                  </div>
-                  <h4 className="font-heading font-extrabold text-2xl sm:text-3xl text-brand-black mb-2 uppercase leading-tight">
-                    Your registration has been received.
-                  </h4>
-                  <p className="text-sm text-brand-charcoal/80 mb-6 max-w-md mx-auto leading-relaxed">
-                    Your spot is tentatively reserved for this weekend's session, <strong>{fullName}</strong>. Please complete the entry fee payment below to secure your spot.
-                  </p>
+                <div className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-2">
+                  SENT FOR APPROVAL • UNDER REVIEW
                 </div>
-              )}
+                <h4 className="font-heading font-extrabold text-2xl sm:text-3xl text-brand-black mb-2 uppercase leading-tight">
+                  Registration Sent for Approval!
+                </h4>
+                <p className="text-sm text-brand-charcoal/80 max-w-md mx-auto leading-relaxed">
+                  Thank you, <strong>{fullName}</strong>. Your spot and payment screenshot have been submitted to the organiser for review.
+                </p>
+              </div>
 
               {/* Registration Number Card */}
-              <div className="p-5 rounded-2xl bg-brand-offwhite border border-black/[0.08] mb-6 text-center">
+              <div className="p-5 rounded-2xl bg-brand-offwhite border border-black/[0.08] text-center">
                 <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-brand-muted mb-1 font-semibold">
-                  UNIQUE REGISTRATION NUMBER
+                  OFFICIAL REGISTRATION NUMBER
                 </div>
                 <div className="flex items-center justify-center gap-3">
                   <span className="font-mono font-extrabold text-2xl sm:text-3xl text-brand-black tracking-wider">
@@ -414,33 +315,31 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   </button>
                 </div>
                 <p className="text-[11px] text-brand-muted font-mono mt-1">
-                  Keep this number handy to access your ticket confirmation.
+                  Saved with mobile number <strong>+91 {phone}</strong>
                 </p>
               </div>
 
-              {/* Submitted Payment Info Display (if payment was submitted) */}
-              {successData.registrationStatus === 'payment_submitted' && (
-                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-left mb-6 text-xs font-mono space-y-1.5">
-                  <div className="flex items-center justify-between text-amber-900 font-bold uppercase">
-                    <span>Payment Verification Pending</span>
-                    <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px]">Under Review</span>
-                  </div>
-                  {(successData.utr || utrReference) && (
-                    <div className="text-amber-800">
-                      Submitted UTR: <strong className="text-brand-black font-mono">{successData.utr || utrReference}</strong>
-                    </div>
-                  )}
-                  {screenshotData && (
-                    <div className="text-emerald-700 flex items-center gap-1.5 pt-1">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Payment receipt screenshot attached</span>
-                    </div>
-                  )}
-                  <p className="text-[11px] text-brand-charcoal/70 pt-1">
-                    Once our organiser verifies the bank credit, your status on "My Ticket" will update to Confirmed!
-                  </p>
+              {/* Status Notice */}
+              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-left text-xs font-mono space-y-2">
+                <div className="flex items-center justify-between text-amber-900 font-bold uppercase">
+                  <span>Organiser Review in Progress</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px]">Under Review</span>
                 </div>
-              )}
+                {screenshotData && (
+                  <div className="text-emerald-800 flex items-center gap-1.5 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Payment screenshot uploaded and attached</span>
+                  </div>
+                )}
+                {utrReference && (
+                  <div className="text-amber-900">
+                    Submitted UTR: <strong className="text-brand-black font-mono">{utrReference}</strong>
+                  </div>
+                )}
+                <p className="text-amber-900/90 leading-relaxed text-[11px] pt-1 border-t border-amber-200/60">
+                  Our organisers will verify bank credits before match time. You can check your pass status anytime under <strong>"My Tickets"</strong> in the top menu by entering your phone number (<strong>+91 {phone}</strong>).
+                </p>
+              </div>
 
               {/* Event Recap Card */}
               <div className="p-4 rounded-2xl bg-brand-offwhite border border-black/[0.06] text-left mb-6 text-xs font-mono space-y-2">
@@ -466,158 +365,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 </div>
               </div>
 
-              {/* PAYMENT INSTRUCTIONS & INLINE SUBMISSION (For Registration Received State) */}
-              {successData.registrationStatus === 'received' && paymentSettings && (
-                <div className="p-5 rounded-2xl bg-brand-offwhite border border-black/[0.08] text-left mb-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-black/[0.06] pb-2.5">
-                    <div className="flex items-center gap-2 text-brand-teal font-mono text-xs uppercase tracking-wider font-semibold">
-                      <QrCode className="w-4 h-4" />
-                      <span>Payment Instructions</span>
-                    </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold uppercase">
-                      Instant UPI Scan
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="shrink-0 p-3 bg-white rounded-2xl border border-black/[0.08] shadow-xs flex flex-col items-center">
-                      <div className="w-28 h-28 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
-                        {paymentSettings.qr_image_path ? (
-                          <img
-                            src={paymentSettings.qr_image_path}
-                            alt="Official UPI QR Code"
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <QRCodeSVG
-                            value={upiPaymentUri || `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${event.registration_fee}&cu=INR`}
-                            size={112}
-                            level="M"
-                            className="w-full h-full"
-                          />
-                        )}
-                      </div>
-                      <span className="text-[9px] font-mono font-bold tracking-wider text-brand-charcoal/70 uppercase mt-2">
-                        Scan with Any UPI App
-                      </span>
-                    </div>
-
-                    <div className="flex-1 w-full space-y-2 text-xs text-brand-charcoal">
-                      <div>
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-brand-muted block">
-                          Payee Name
-                        </span>
-                        <span className="font-semibold text-brand-black">
-                          {paymentSettings.account_display_name}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-brand-muted block">
-                          Organiser UPI ID
-                        </span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="font-mono font-bold text-brand-black text-xs sm:text-sm px-2.5 py-1 rounded-lg bg-white border border-black/[0.08]">
-                            {paymentSettings.upi_id}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleCopyUpi}
-                            className="px-2.5 py-1 rounded-lg bg-white border border-black/[0.08] hover:bg-black/[0.04] text-[11px] font-mono font-medium text-brand-charcoal flex items-center gap-1.5 transition-colors"
-                          >
-                            {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-brand-muted" />}
-                            <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-0.5 text-[10px] font-mono text-brand-muted">
-                        <span>Accepted: GPay • PhonePe • Paytm • BHIM</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 1-Tap Direct UPI App Payment on Mobile */}
-                  <div className="pt-2 border-t border-black/[0.06] space-y-2">
-                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-charcoal">
-                      1-Tap Direct Payment on Phone:
-                    </div>
-
-                    {/* Primary Google Pay Direct Launcher */}
-                    <a
-                      href={gpayUri}
-                      className="w-full inline-flex items-center justify-between py-3 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
-                      title="Directly opens Google Pay app"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="w-4 h-4 text-white" />
-                        <span>Pay ₹{event.registration_fee} with Google Pay (GPay)</span>
-                      </div>
-                      <span className="text-[10px] font-mono font-semibold bg-white/20 px-2.5 py-0.5 rounded-full">
-                        Open GPay →
-                      </span>
-                    </a>
-
-                    {/* Quick App Selector: PhonePe, Paytm, Any UPI */}
-                    <div className="grid grid-cols-3 gap-2 text-center pt-0.5">
-                      <a
-                        href={phonepeUri}
-                        className="py-2.5 px-2 rounded-xl bg-[#5f259f] hover:bg-[#4d1d82] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
-                        title="Directly opens PhonePe app"
-                      >
-                        🟣 PhonePe
-                      </a>
-                      <a
-                        href={paytmUri}
-                        className="py-2.5 px-2 rounded-xl bg-[#002e6e] hover:bg-[#002252] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
-                        title="Directly opens Paytm app"
-                      >
-                        🔷 Paytm
-                      </a>
-                      <a
-                        href={upiPaymentUri}
-                        className="py-2.5 px-2 rounded-xl bg-brand-charcoal hover:bg-black text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
-                        title="Open device default UPI app chooser"
-                      >
-                        ⚡ Any UPI
-                      </a>
-                    </div>
-                    <p className="text-[10px] text-center text-brand-muted mt-1 font-mono">
-                      Paying to <strong>{paymentSettings.upi_id}</strong> ({paymentSettings.account_display_name})
-                    </p>
-                  </div>
-
-                  {/* Inline Form to Submit 12-Digit UTR */}
-                  <form onSubmit={handlePostRegistrationPaymentSubmit} className="pt-3 border-t border-black/[0.06] space-y-2.5">
-                    <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-black">
-                      Paid via UPI? Submit 12-Digit UTR Reference
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={postUtr}
-                        onChange={(e) => setPostUtr(e.target.value)}
-                        placeholder="e.g. 432109876543"
-                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-black/[0.08] text-xs font-mono focus:border-brand-teal"
-                      />
-                      <button
-                        type="submit"
-                        disabled={postSubmitting}
-                        className="px-5 py-2.5 rounded-xl bg-brand-black hover:bg-brand-charcoal text-white text-xs font-mono font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 shrink-0"
-                      >
-                        {postSubmitting ? 'Submitting...' : 'Submit Payment Details'}
-                      </button>
-                    </div>
-                    {postError && (
-                      <p className="text-xs text-rose-700 font-mono">{postError}</p>
-                    )}
-                    <p className="text-[10px] text-brand-muted">
-                      Paid now or paying later? You can also submit your UTR anytime via the <strong>My Ticket</strong> lookup.
-                    </p>
-                  </form>
-                </div>
-              )}
-
               {/* Email Delivery Feedback */}
               {email && (
                 <div className="p-3 rounded-xl bg-brand-offwhite border border-black/[0.06] text-xs font-mono text-left mb-6 flex items-start gap-2.5">
@@ -625,59 +372,25 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   <div>
                     {successData.emailResult?.sent ? (
                       <span className="text-emerald-700 font-semibold">
-                        ✓ Confirmation email sent to {email} via Resend (Provider ID: {successData.emailResult.id})
+                        ✓ Confirmation email sent to {email}
                       </span>
                     ) : (
                       <span className="text-brand-muted">
-                        ℹ Email delivery: {successData.emailResult?.error || 'Resend API key not configured in Admin Settings.'}
+                        ℹ Registered with email {email}
                       </span>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* WhatsApp & Modal Navigation Actions */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                {(() => {
-                  const isPaymentSubmitted = successData.registrationStatus === 'payment_submitted';
-                  const waInfo = createWhatsAppLink(
-                    isPaymentSubmitted ? 'payment_verification' : 'registration_enquiry',
-                    {
-                      regNumber: successData.registrationNumber,
-                      name: fullName,
-                      eventTitle: event.title,
-                      utr: successData.utr || utrReference,
-                    }
-                  );
-
-                  return waInfo.isConfigured ? (
-                    <a
-                      href={waInfo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-teal text-white text-xs font-mono font-semibold uppercase tracking-wider hover:bg-[#126f8c] transition-colors"
-                      title="Opens WhatsApp with prefilled enquiry"
-                    >
-                      <span>
-                        {isPaymentSubmitted ? 'Enquire via WhatsApp' : 'Registration Enquiry on WhatsApp'}
-                      </span>
-                      <ArrowRight className="w-4 h-4" />
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-black/10 text-brand-muted text-xs font-mono uppercase tracking-wider cursor-not-allowed"
-                    >
-                      <span>WhatsApp Not Configured</span>
-                    </button>
-                  );
-                })()}
-
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                 <button
+                  type="button"
                   onClick={resetAndClose}
-                  className="px-6 py-3 rounded-full bg-brand-offwhite hover:bg-black hover:text-white border border-black/[0.08] text-xs font-mono uppercase tracking-wider text-brand-black transition-colors"
+                  className="w-full py-3.5 px-6 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white font-heading font-extrabold text-xs uppercase tracking-widest transition-colors shadow-sm"
                 >
-                  Done
+                  Done — Back to Home
                 </button>
               </div>
             </div>
@@ -885,7 +598,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                       </button>
                     )}
                     <p className="text-[11px] text-center text-brand-muted mt-2 font-mono">
-                      Next: Scan official UPI QR code or pay via 1-tap Google Pay app
+                      Next: Scan official UPI QR code or copy UPI ID to complete payment
                     </p>
                   </div>
                 </form>
@@ -929,42 +642,33 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                           <span>Official Organiser UPI QR Code</span>
                         </div>
                         <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold uppercase">
-                          Instant Scan
+                          Scan & Pay
                         </span>
                       </div>
 
                       <div className="flex flex-col sm:flex-row items-center gap-4">
                         {/* Interactive Organiser QR Code */}
                         <div className="shrink-0 p-3 bg-white rounded-2xl border border-black/[0.08] shadow-xs flex flex-col items-center">
-                          <div className="w-32 h-32 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
-                            {paymentSettings.qr_image_path ? (
-                              <img
-                                src={paymentSettings.qr_image_path}
-                                alt="Official UPI QR Code"
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <QRCodeSVG
-                                value={upiPaymentUri || `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(paymentSettings.account_display_name)}&am=${event.registration_fee}&cu=INR`}
-                                size={128}
-                                level="M"
-                                className="w-full h-full"
-                              />
-                            )}
+                          <div className="w-36 h-36 flex items-center justify-center p-1 bg-white overflow-hidden rounded-xl">
+                            <img
+                              src={paymentSettings.qr_image_path || '/images/qr.jpeg'}
+                              alt="Official UPI QR Code"
+                              className="w-full h-full object-contain"
+                            />
                           </div>
                           <span className="text-[9px] font-mono font-bold tracking-wider text-brand-charcoal/70 uppercase mt-2">
                             Scan with Any UPI App
                           </span>
                         </div>
 
-                        {/* Payment Details & Quick Actions */}
-                        <div className="flex-1 w-full space-y-2 text-xs text-brand-charcoal">
+                        {/* Payment Details */}
+                        <div className="flex-1 w-full space-y-2.5 text-xs text-brand-charcoal">
                           <div>
                             <span className="text-[10px] font-mono uppercase tracking-wider text-brand-muted block">
                               Payee Name
                             </span>
-                            <span className="font-semibold text-brand-black">
-                              {paymentSettings.account_display_name}
+                            <span className="font-semibold text-brand-black text-sm">
+                              {paymentSettings.account_display_name || 'Sivaram P Babu'}
                             </span>
                           </div>
 
@@ -973,7 +677,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                               Organiser UPI ID
                             </span>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="font-mono font-bold text-brand-black text-xs sm:text-sm px-2.5 py-1 rounded-lg bg-white border border-black/[0.08]">
+                              <span className="font-mono font-bold text-brand-black text-xs sm:text-sm px-2.5 py-1 rounded-lg bg-white border border-black/[0.08] select-all">
                                 {paymentSettings.upi_id}
                               </span>
                               <button
@@ -997,83 +701,20 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 pt-0.5">
-                            <span className="text-[10px] font-mono text-brand-muted">Accepted:</span>
-                            <span className="text-[10px] font-mono text-brand-charcoal font-semibold">
-                              GPay • PhonePe • Paytm • BHIM
-                            </span>
-                          </div>
-
-                          {/* 1-Tap Direct UPI App Payment on Mobile */}
-                          <div className="pt-2 border-t border-black/[0.06] space-y-2">
-                            {/* Primary Google Pay Direct Launcher */}
-                            <a
-                              href={gpayUri}
-                              className="w-full inline-flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-heading font-bold text-xs uppercase tracking-wider shadow-sm transition-all transform active:scale-[0.98]"
-                              title="Directly opens Google Pay app"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Smartphone className="w-4 h-4 text-white" />
-                                <span>Pay ₹{event.registration_fee} with Google Pay</span>
-                              </div>
-                              <span className="text-[10px] font-mono font-semibold bg-white/20 px-2 py-0.5 rounded-full">
-                                Open GPay →
-                              </span>
-                            </a>
-
-                            {/* Quick App Choices */}
-                            <div className="grid grid-cols-3 gap-1.5 text-center">
-                              <a
-                                href={phonepeUri}
-                                className="py-2 px-1.5 rounded-lg bg-[#5f259f] hover:bg-[#4d1d82] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
-                                title="Open PhonePe app"
-                              >
-                                🟣 PhonePe
-                              </a>
-                              <a
-                                href={paytmUri}
-                                className="py-2 px-1.5 rounded-lg bg-[#002e6e] hover:bg-[#002252] text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
-                                title="Open Paytm app"
-                              >
-                                🔷 Paytm
-                              </a>
-                              <a
-                                href={upiPaymentUri}
-                                className="py-2 px-1.5 rounded-lg bg-brand-charcoal hover:bg-black text-white font-mono font-bold text-[10px] uppercase tracking-wider transition-all truncate shadow-xs"
-                                title="Open device UPI chooser"
-                              >
-                                ⚡ Any App
-                              </a>
-                            </div>
+                          <div className="p-2 rounded-xl bg-white border border-black/[0.06] text-[11px] font-mono text-brand-charcoal/90 leading-relaxed">
+                            Pay <strong>₹{event.registration_fee}</strong> via any UPI app (GPay, PhonePe, Paytm, etc.) to the UPI ID or QR above, and attach the screenshot below.
                           </div>
                         </div>
                       </div>
 
-                      {/* UTR Input */}
-                      <div className="pt-2.5 border-t border-black/[0.06]">
-                        <label className="block text-[11px] font-mono text-brand-muted uppercase tracking-wider mb-1">
-                          12-Digit UPI Transaction / UTR Number (Optional / Speed Up Verification)
-                        </label>
-                        <input
-                          type="text"
-                          value={utrReference}
-                          onChange={(e) => setUtrReference(e.target.value)}
-                          placeholder="e.g. 432109876543 (paste from GPay / PhonePe)"
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-black/[0.08] text-xs font-mono focus:border-brand-teal transition-all"
-                        />
-                        <p className="text-[10px] text-brand-muted mt-1">
-                          Paid via UPI? Paste the 12-digit transaction UTR number above to speed up court verification.
-                        </p>
-                      </div>
-
-                      {/* Optional Payment Screenshot Upload */}
-                      <div className="pt-2.5 border-t border-black/[0.06]">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-[11px] font-mono text-brand-muted uppercase tracking-wider">
-                            Upload Payment Screenshot (Optional)
+                      {/* Payment Screenshot Upload (Required proof) */}
+                      <div className="pt-3 border-t border-black/[0.06] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-mono font-bold uppercase tracking-wider text-brand-black">
+                            Photo Screenshot of Payment *
                           </label>
                           <span className="text-[10px] font-mono text-brand-teal font-semibold">
-                            PNG, JPG, WEBP
+                            PNG, JPG, WEBP (Max 5MB)
                           </span>
                         </div>
 
@@ -1087,9 +728,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         />
 
                         {screenshotData ? (
-                          <div className="p-2.5 bg-white rounded-xl border border-emerald-300 flex items-center justify-between gap-3 shadow-2xs">
+                          <div className="p-3 bg-white rounded-xl border border-emerald-300 flex items-center justify-between gap-3 shadow-2xs">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-black/[0.08] bg-black/5">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-black/[0.08] bg-black/5">
                                 <img
                                   src={screenshotData}
                                   alt="Payment Screenshot"
@@ -1100,9 +741,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                                 <p className="text-xs font-mono font-bold text-emerald-800 truncate">
                                   {screenshotName || 'Payment Screenshot Attached'}
                                 </p>
-                                <span className="text-[10px] font-mono text-emerald-600 flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  Ready for court verification
+                                <span className="text-[10px] font-mono text-emerald-600 flex items-center gap-1 font-semibold">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  Screenshot ready for approval
                                 </span>
                               </div>
                             </div>
@@ -1119,21 +760,42 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                         ) : (
                           <label
                             htmlFor="payment-screenshot-upload"
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-black/20 hover:border-brand-teal hover:bg-white bg-black/[0.02] cursor-pointer transition-all text-xs font-mono text-brand-charcoal"
+                            className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-brand-teal/40 hover:border-brand-teal hover:bg-white bg-black/[0.02] cursor-pointer transition-all text-center space-y-1.5 group"
                           >
-                            <Upload className="w-3.5 h-3.5 text-brand-teal" />
-                            <span>Attach Receipt Screenshot (Optional)</span>
+                            <div className="w-10 h-10 rounded-xl bg-teal-50 group-hover:bg-teal-100 text-brand-teal flex items-center justify-center transition-colors">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <span className="text-xs font-mono font-bold text-brand-teal uppercase tracking-wider block">
+                              Click or Drag & Drop to Attach Screenshot *
+                            </span>
+                            <span className="text-[10px] font-mono text-brand-muted block">
+                              Upload the confirmation screenshot of your ₹{event.registration_fee} transfer
+                            </span>
                           </label>
                         )}
-                        <p className="text-[10px] text-brand-muted mt-1">
-                          Attach your UPI payment confirmation screenshot for fast-track verification.
+                      </div>
+
+                      {/* Optional 12-Digit UTR Input */}
+                      <div className="pt-2.5 border-t border-black/[0.06] space-y-1">
+                        <label className="block text-[11px] font-mono text-brand-charcoal uppercase tracking-wider font-semibold">
+                          12-Digit UPI Transaction / UTR Number (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={utrReference}
+                          onChange={(e) => setUtrReference(e.target.value)}
+                          placeholder="e.g. 432109876543 (optional)"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-black/[0.08] text-xs font-mono focus:border-brand-teal outline-none transition-all"
+                        />
+                        <p className="text-[10px] text-brand-muted font-mono">
+                          Optional: If visible in your UPI app, paste your 12-digit transaction ID.
                         </p>
                       </div>
                     </div>
                   )}
 
                   {/* SUBMISSION ACTIONS */}
-                  <div className="pt-3 space-y-2.5">
+                  <div className="pt-3 space-y-2">
                     <button
                       type="button"
                       onClick={handleSubmit}
@@ -1141,27 +803,16 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                       className="w-full py-4 px-6 rounded-full bg-brand-teal hover:bg-[#126f8c] disabled:opacity-50 text-white font-heading font-extrabold text-xs sm:text-sm uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 transform active:scale-[0.98]"
                     >
                       <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                      <span>{loading ? 'Submitting for Approval...' : 'Done Payment — Send for Approval'}</span>
+                      <span>{loading ? 'Sending Registration for Approval...' : 'Send Registration for Approval'}</span>
                     </button>
-                    <p className="text-[11px] text-center text-brand-charcoal/80 font-mono">
-                      Click above once you have transferred ₹{event.registration_fee} to send your spot for organiser verification.
+                    <p className="text-[11px] text-center text-brand-muted font-mono leading-relaxed">
+                      Your registration and payment screenshot will be sent directly to the organiser for verification. You can check your pass anytime under <strong>My Tickets</strong> with your phone number.
                     </p>
-
-                    <div className="text-center pt-1 border-t border-black/[0.06]">
-                      <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="text-xs font-mono text-brand-muted hover:text-brand-black transition-colors underline"
-                      >
-                        Need to pay later or at venue? Reserve spot without pre-payment →
-                      </button>
-                    </div>
                   </div>
 
                   <div className="flex items-center justify-center gap-2 text-[11px] text-brand-muted pt-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-brand-teal" />
-                    <span>Atomic transaction protected against duplicate registrations and overselling.</span>
+                    <span>Protected against duplicate registrations and overselling.</span>
                   </div>
                 </div>
               )}
