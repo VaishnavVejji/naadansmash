@@ -44,19 +44,19 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 backdrop-blur-md border-b border-black/[0.06] shadow-sm py-3.5'
-          : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent py-5 sm:py-6'
+          ? 'bg-white/95 backdrop-blur-md border-b border-black/[0.06] shadow-sm py-2.5 sm:py-3.5'
+          : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent py-3 sm:py-6'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Logo & Brand Name */}
           <a
             href="#home"
-            className="flex items-center gap-3.5 group focus:outline-none shrink-0"
+            className="flex items-center gap-2 sm:gap-3.5 group focus:outline-none shrink-0 min-w-0"
             aria-label="NAADANSMASH Home"
           >
-            <div className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-full overflow-hidden bg-white border border-white/20 p-1 shadow-sm transition-transform duration-300 group-hover:scale-105 shrink-0">
+            <div className="relative h-9 w-9 sm:h-12 sm:w-12 rounded-full overflow-hidden bg-white border border-white/20 p-0.5 sm:p-1 shadow-sm transition-transform duration-300 group-hover:scale-105 shrink-0">
               <img
                 src="/images/naadansmash-logo.png"
                 alt="NAADANSMASH Official Logo"
@@ -65,16 +65,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 height={48}
               />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <span
-                className={`font-heading font-extrabold text-xl sm:text-2xl tracking-tight leading-none transition-colors ${
+                className={`font-heading font-extrabold text-base sm:text-2xl tracking-tight leading-none transition-colors truncate ${
                   isScrolled ? 'text-brand-black group-hover:text-brand-teal' : 'text-white'
                 }`}
               >
                 NAADANSMASH
               </span>
               <span
-                className={`text-[10px] tracking-[0.2em] font-semibold uppercase mt-0.5 ${
+                className={`text-[9px] sm:text-[10px] tracking-[0.12em] sm:tracking-[0.2em] font-semibold uppercase mt-0.5 ${
                   isScrolled ? 'text-brand-muted' : 'text-white/70'
                 }`}
               >
@@ -147,23 +147,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Mobile / Tablet Quick Triggers */}
-          <div className="flex lg:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={onMyTicketsClick}
-              className="px-3 py-1.5 rounded-full bg-white/15 text-white border border-white/20 text-[11px] font-semibold uppercase tracking-wider shadow-sm flex items-center gap-1"
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold uppercase tracking-wider transition-colors shadow-sm ${
+                isScrolled
+                  ? 'bg-brand-offwhite text-brand-black border-black/[0.1] hover:bg-black/5'
+                  : 'bg-white/15 text-white border-white/20 hover:bg-white/25'
+              }`}
+              title="My Tickets"
             >
-              <Ticket className="w-3 h-3 text-brand-teal" />
+              <Ticket className="w-3.5 h-3.5 text-brand-teal" />
               <span>Tickets</span>
             </button>
             <button
               onClick={onJoinClick}
-              className="px-3.5 py-1.5 rounded-full bg-brand-teal text-white text-xs font-semibold uppercase tracking-wider shadow-sm"
+              className="px-3 py-1.5 rounded-full bg-brand-teal hover:bg-[#126f8c] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm transition-transform active:scale-95"
             >
               Join
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className={`p-2 rounded-lg transition-colors focus:outline-none ${
+              className={`p-1.5 rounded-lg transition-colors focus:outline-none ${
                 isScrolled
                   ? 'text-brand-charcoal hover:bg-black/[0.05]'
                   : 'text-white hover:bg-white/15'
@@ -171,7 +176,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
             </button>
           </div>
         </div>
