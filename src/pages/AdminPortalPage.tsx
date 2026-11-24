@@ -216,8 +216,9 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
           if (!selectedEventId) {
             setSelectedEventId(targetEv.id);
           }
-          // Only sync form state if user isn't in the middle of creating a brand new event
-          if (!isCreatingNewEvent && !savingEvent) {
+          // Only sync form state if user isn't actively on the schedule tab during background polling
+          const isUserOnScheduleTab = activeTab === 'schedule';
+          if (!isCreatingNewEvent && !savingEvent && (!isBackground || !isUserOnScheduleTab)) {
             setTitle(targetEv.title);
             setEventDate(targetEv.event_date);
             setStartTime(targetEv.start_time.slice(0, 5));
@@ -235,8 +236,11 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
       try {
         const pSettings = await eventsService.getPaymentSettings();
         if (pSettings?.upi_id) {
-          setUpiId(pSettings.upi_id);
-          setAccountName(pSettings.account_display_name);
+          const isUserOnSettingsTab = activeTab === 'settings';
+          if (!isBackground || !isUserOnSettingsTab) {
+            setUpiId(pSettings.upi_id);
+            setAccountName(pSettings.account_display_name);
+          }
         }
       } catch {}
 
@@ -258,7 +262,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     } finally {
       if (!isBackground) setIsSyncingCloud(false);
     }
-  }, [selectedEventId, isCreatingNewEvent, savingEvent, loadRoster]);
+  }, [selectedEventId, isCreatingNewEvent, savingEvent, loadRoster, activeTab]);
 
   useEffect(() => {
     if (session) {
@@ -579,15 +583,15 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
         const updated: DatabaseEvent = {
           ...currentEvent,
           id: targetId,
-          title,
+          title: title.trim(),
           event_date: eventDate,
           start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
           end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-          venue,
+          venue: venue.trim(),
           registration_fee: Number(fee),
           max_participants: Number(maxParticipants),
           status: status as any,
-          description,
+          description: description.trim(),
         };
 
         await eventsService.updateEventManually(updated);
@@ -596,6 +600,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
           return exists ? prev.map((ev) => (ev.id === updated.id ? updated : ev)) : [updated, ...prev];
         });
         setSelectedEventId(updated.id);
+        populateEventForm(updated);
       }
 
       if (upiId.trim()) {
