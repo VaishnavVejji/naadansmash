@@ -3,7 +3,6 @@ import {
   Calendar, 
   Clock, 
   MapPin, 
-  Users, 
   ArrowRight, 
   Bell, 
   Check, 
@@ -290,36 +289,15 @@ export const Events: React.FC<EventsProps> = ({
                           <span>Balanced games for all levels</span>
                         </div>
                       </div>
-
-                      {/* Session Status Strip (Slot counter removed per preference) */}
-                      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-black/[0.06] flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-mono">
-                          <Users className="w-3.5 h-3.5 text-brand-teal" />
-                          <span className="text-brand-charcoal uppercase font-semibold">Weekend Doubles Session</span>
-                        </div>
-                        <div className="text-xs font-mono font-bold">
-                          {isRegistrationOpen ? (
-                            <span className="text-emerald-700 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                              Open For Registration
-                            </span>
-                          ) : (
-                            <span className="text-rose-700 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-rose-600" />
-                              Registration Closed
-                            </span>
-                          )}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Bottom Action Footer */}
-                    <div className="p-4 sm:p-6 bg-white border-t border-black/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3">
-                      <div className="text-[11px] text-brand-muted text-center sm:text-left">
-                        {isRegistrationOpen
-                          ? '* Pay via UPI or Cash directly at the venue. Atomic database protection prevents duplicate bookings.'
-                          : '* Registrations for this session are currently closed. Join alerts below to get notified for the next game.'}
-                      </div>
+                    <div className="p-4 sm:p-6 bg-white border-t border-black/[0.08] flex flex-col sm:flex-row items-center justify-end gap-3">
+                      {!isRegistrationOpen && (
+                        <div className="text-[11px] text-brand-muted text-center sm:text-left mr-auto">
+                          * Registrations for this session are currently closed. Join alerts below to get notified for the next game.
+                        </div>
+                      )}
 
                       {isRegistrationOpen ? (
                         <button
