@@ -1,17 +1,17 @@
 /**
  * Optimizes an uploaded image file (PNG, JPG, WEBP) by downscaling dimensions
- * if larger than maxDim (default: 1200px) and compressing to lightweight JPEG (default quality 0.85).
+ * if larger than maxDim (default: 850px) and compressing to lightweight JPEG (default quality 0.72).
  * 
  * This ensures:
- * 1. Fast, reliable upload to Supabase and storage without network payload bottlenecks.
+ * 1. Ultra-fast, instant upload without any network payload lag or timeout.
  * 2. Instant client-side preview in Admin and My Tickets modals.
  * 3. Prevention of localStorage 5MB quota errors.
  * 4. High visual clarity for inspecting UPI reference numbers, timestamps, and rupee amounts.
  */
 export async function optimizeImageForUpload(
   file: File,
-  maxDim = 1200,
-  quality = 0.85
+  maxDim = 850,
+  quality = 0.72
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {

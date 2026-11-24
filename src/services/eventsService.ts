@@ -276,7 +276,15 @@ function saveStoredRegistrations(regs: any[]) {
   try {
     localStorage.setItem(STORAGE_KEY_REGISTRATIONS, JSON.stringify(regs));
   } catch (e) {
-    console.warn('Failed to save registrations to storage', e);
+    console.warn('LocalStorage quota limit reached, saving lean registration cache:', e);
+    try {
+      // Strip heavy screenshot base64 strings so participant roster, tickets, and payment approvals are saved without crashing
+      const lean = regs.map((r) => ({
+        ...r,
+        payment_screenshot_path: r.payment_screenshot_path ? 'photo_attached' : null,
+      }));
+      localStorage.setItem(STORAGE_KEY_REGISTRATIONS, JSON.stringify(lean));
+    } catch {}
   }
 }
 
@@ -1111,10 +1119,11 @@ export const eventsService = {
       console.warn('Failed to record player ticket locally:', e);
     }
 
-    // 2. Cross-device cloud sync via /api/tickets (Netlify Blobs)
+    // 2. High-speed, non-blocking cross-device cloud sync via /api/tickets
     try {
       const ticketPayload = fullRecord ? {
         ...fullRecord,
+        payment_screenshot_path: fullRecord.payment_screenshot_path ? 'photo_attached' : null,
         registration_number: formatted,
         phone: cleanPhone,
         event_id: eventId,
@@ -1128,15 +1137,23 @@ export const eventsService = {
         created_at: new Date().toISOString(),
       };
 
-      await fetch('/api/tickets', {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null;
+
+      fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller?.signal,
         body: JSON.stringify({
           phone: cleanPhone,
           regNumber: formatted,
           registration: ticketPayload,
         }),
-      });
+      })
+        .finally(() => {
+          if (timeoutId) clearTimeout(timeoutId);
+        })
+        .catch(() => {});
     } catch (e) {
       console.warn('Failed to push ticket to cloud sync API:', e);
     }
@@ -2014,7 +2031,11 @@ export const eventsService = {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const updatePayload: any = { payment_status: paymentStatus };
+        const updatePayload: any = {
+          payment_status: paymentStatus,
+          registration_status: registrationStatus,
+          rejection_reason: paymentStatus === 'rejected' ? (rejectionReason || 'Payment details could not be verified by the organiser.') : null,
+        };
         await supabase
           .from('registrations')
           .update(updatePayload)

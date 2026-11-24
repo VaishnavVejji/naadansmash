@@ -28,6 +28,24 @@ const DEFAULT_SEED_TICKETS: any[] = [];
 const memoryStore = new Map<string, any>();
 memoryStore.set('all_registrations', []);
 
+const VALID_REGISTRATION_COLUMNS = new Set([
+  'id', 'registration_number', 'event_id', 'full_name', 'email',
+  'phone', 'age', 'gender', 'skill_level', 'playing_category',
+  'emergency_contact', 'payment_status', 'attendance_status',
+  'registration_status', 'utr_reference', 'payment_screenshot_path', 'created_at'
+]);
+
+function toSupabaseRecord(record: any): any {
+  if (!record || typeof record !== 'object') return {};
+  const clean: any = {};
+  for (const [key, val] of Object.entries(record)) {
+    if (VALID_REGISTRATION_COLUMNS.has(key) && val !== undefined) {
+      clean[key] = val;
+    }
+  }
+  return clean;
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -271,10 +289,10 @@ export default async function handler(req: Request) {
       filtered.unshift(ticketRecord);
       await saveCloudTickets(filtered);
 
-      // 2. Save in Supabase
+      // 2. Save in Supabase (clean valid columns only)
       if (supabase) {
         try {
-          await supabase.from('registrations').upsert(ticketRecord);
+          await supabase.from('registrations').upsert(toSupabaseRecord(ticketRecord));
         } catch (e) {
           console.warn('Supabase upsert error:', e);
         }
@@ -319,7 +337,7 @@ export default async function handler(req: Request) {
 
         if (supabase) {
           try {
-            await supabase.from('registrations').update(target).eq('registration_number', target.registration_number);
+            await supabase.from('registrations').update(toSupabaseRecord(target)).eq('registration_number', target.registration_number);
           } catch {}
         }
 
