@@ -99,7 +99,10 @@ export const App: React.FC = () => {
     } else {
       try {
         const events = await eventsService.getEvents();
-        const active = events.find((e: DatabaseEvent) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.status === 'completed' || e.event_date >= '2026-11-22')) || events[0];
+        const activeEvents = events
+          .filter((e: DatabaseEvent) => !e.isHistorical && (e.status === 'published' || e.status === 'closed'))
+          .sort((a, b) => new Date(b.created_at || b.event_date).getTime() - new Date(a.created_at || a.event_date).getTime());
+        const active = activeEvents.find((e) => e.status === 'published') || activeEvents[0] || null;
         if (active) {
           if (active.status === 'closed' || active.status === 'completed') {
             const eventsElement = document.getElementById('events');

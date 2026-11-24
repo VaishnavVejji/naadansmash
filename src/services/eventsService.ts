@@ -1308,12 +1308,30 @@ export const eventsService = {
         if (error) {
           console.warn('Supabase updateEventManually failed', error);
         }
+
+        // When starting/publishing an event, archive any other published events in Supabase
+        if (updatedEvent.status === 'published') {
+          try {
+            await supabase
+              .from('events')
+              .update({ status: 'completed' })
+              .neq('id', updatedEvent.id)
+              .eq('status', 'published');
+          } catch {}
+        }
       } catch (e) {
         console.error(e);
       }
     }
 
     const events = getStoredEvents();
+    if (updatedEvent.status === 'published') {
+      events.forEach((e) => {
+        if (e.id !== updatedEvent.id && !e.isHistorical && e.status === 'published') {
+          e.status = 'completed';
+        }
+      });
+    }
     const index = events.findIndex((e) => e.id === updatedEvent.id);
     if (index >= 0) {
       events[index] = updatedEvent;

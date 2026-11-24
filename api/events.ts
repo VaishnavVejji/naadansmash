@@ -189,6 +189,10 @@ export default async function handler(req: Request) {
         newList = [updatedEvent];
       }
 
+      if (updatedEvent.status === 'published') {
+        newList = newList.map((e) => (e.id === updatedEvent.id ? e : { ...e, status: 'completed' }));
+      }
+
       await saveCloudEvents(newList);
 
       return new Response(

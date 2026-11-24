@@ -58,9 +58,15 @@ export const Events: React.FC<EventsProps> = ({
     }
   };
 
-  const upcomingEvents = events.filter(
-    (e) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.status === 'completed' || e.event_date >= '2026-11-23')
-  );
+  // Only 1 single active event managed by the admin is displayed on the main page.
+  // We prioritize 'published' (open for registration); then 'closed' (locked registration).
+  // If the admin has ended the event (status: 'completed') or no active event exists,
+  // we do NOT display past completed event cards. Instead, we show "Next event will be notified soon".
+  const activeEvents = events
+    .filter((e) => !e.isHistorical && (e.status === 'published' || e.status === 'closed'))
+    .sort((a, b) => new Date(b.created_at || b.event_date).getTime() - new Date(a.created_at || a.event_date).getTime());
+
+  const activeEvent = activeEvents.find((e) => e.status === 'published') || activeEvents[0] || null;
 
   const inProgressEvent = events.find(
     (e) => !e.isHistorical && (e.status === 'in_progress' || e.status === 'draft')
@@ -114,19 +120,19 @@ export const Events: React.FC<EventsProps> = ({
         {/* UPCOMING EVENTS VIEW */}
         {!loading && (
           <div>
-            {upcomingEvents.length === 0 ? (
-              /* REQUIRED STATE: NEXT GAME COMING SOON */
+            {!activeEvent ? (
+              /* REQUIRED STATE: NEXT EVENT WILL BE NOTIFIED SOON */
               <div className="bg-brand-offwhite rounded-3xl p-10 sm:p-16 border border-black/[0.08] text-center max-w-3xl mx-auto shadow-subtle animate-fade-in">
                 <div className="w-16 h-16 rounded-full bg-white border border-black/[0.08] flex items-center justify-center mx-auto mb-6 text-brand-teal shadow-xs">
                   <Bell className="w-7 h-7" />
                 </div>
 
                 <div className="inline-block px-3 py-1 rounded-full bg-brand-black text-white text-[10px] font-mono font-semibold uppercase tracking-[0.2em] mb-4">
-                  {inProgressEvent?.status === 'in_progress' ? 'SESSION PLANNING IN PROGRESS' : 'SESSION SCHEDULING'}
+                  {inProgressEvent?.status === 'in_progress' ? 'SESSION PLANNING IN PROGRESS' : 'NEXT EVENT ANNOUNCEMENT'}
                 </div>
 
                 <h3 className="font-heading font-extrabold text-3xl sm:text-5xl text-brand-black uppercase tracking-tight mb-4">
-                  {inProgressEvent?.status === 'in_progress' ? 'NEXT SESSION IN PROGRESS' : 'NEXT GAME COMING SOON'}
+                  NEXT EVENT WILL BE NOTIFIED SOON
                 </h3>
 
                 <p className="text-base text-brand-charcoal/80 max-w-lg mx-auto leading-relaxed mb-8">
@@ -171,11 +177,11 @@ export const Events: React.FC<EventsProps> = ({
                 </div>
               </div>
             ) : (
-              /* PREMIUM EVENT-BOOKING PLATFORM CARD */
+              /* PREMIUM EVENT-BOOKING PLATFORM CARD: SINGLE ACTIVE EVENT MANAGED BY ADMIN */
               <div className="max-w-4xl mx-auto">
-                {upcomingEvents.map((evt) => {
-                  const isCompleted = evt.status === 'completed';
-                  const isClosed = evt.status === 'closed' || isCompleted || (evt.available_slots !== undefined && evt.available_slots <= 0);
+                {(() => {
+                  const evt = activeEvent;
+                  const isClosed = evt.status === 'closed' || (evt.available_slots !== undefined && evt.available_slots <= 0);
                   const isRegistrationOpen = evt.status === 'published' && !isClosed;
                   return (
                   <div
@@ -195,8 +201,6 @@ export const Events: React.FC<EventsProps> = ({
                           }`} />
                           {isRegistrationOpen
                             ? 'Registration Open'
-                            : isCompleted
-                            ? 'Session Completed & Closed'
                             : 'Registration Closed'}
                         </span>
                         <span className="text-xs font-mono text-brand-muted uppercase">
@@ -302,7 +306,7 @@ export const Events: React.FC<EventsProps> = ({
                           ) : (
                             <span className="text-rose-700 flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-rose-600" />
-                              {isCompleted ? 'Session Completed' : 'Registration Closed'}
+                              Registration Closed
                             </span>
                           )}
                         </div>
@@ -314,8 +318,6 @@ export const Events: React.FC<EventsProps> = ({
                       <div className="text-[11px] text-brand-muted text-center sm:text-left">
                         {isRegistrationOpen
                           ? '* Pay via UPI or Cash directly at the venue. Atomic database protection prevents duplicate bookings.'
-                          : isCompleted
-                          ? '* This match session has concluded and registrations are closed. Check back soon for the next game schedule.'
                           : '* Registrations for this session are currently closed. Join alerts below to get notified for the next game.'}
                       </div>
 
@@ -333,7 +335,7 @@ export const Events: React.FC<EventsProps> = ({
                             disabled
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-black/10 text-brand-charcoal/50 font-heading font-semibold text-xs uppercase tracking-widest cursor-not-allowed border border-black/[0.08]"
                           >
-                            <span>{isCompleted ? 'SESSION COMPLETED' : 'REGISTRATION CLOSED'}</span>
+                            <span>REGISTRATION CLOSED</span>
                           </button>
                           <button
                             onClick={onOpenAlertModal}
@@ -346,7 +348,7 @@ export const Events: React.FC<EventsProps> = ({
                     </div>
                   </div>
                   );
-                })}
+                })()}
               </div>
             )}
           </div>
