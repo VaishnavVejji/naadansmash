@@ -43,6 +43,10 @@ function toSupabaseRecord(record: any): any {
       clean[key] = val;
     }
   }
+  // Never overwrite an actual photo in Supabase with the placeholder 'photo_attached'
+  if (clean.payment_screenshot_path === 'photo_attached') {
+    delete clean.payment_screenshot_path;
+  }
   return clean;
 }
 

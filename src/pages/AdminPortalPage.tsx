@@ -2239,12 +2239,22 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
               </button>
             </div>
 
-            <div className="rounded-2xl overflow-hidden bg-black/60 border border-slate-800 max-h-[60vh] flex items-center justify-center p-2 mb-5">
-              <img
-                src={viewingScreenshot.url}
-                alt={`Payment proof for ${viewingScreenshot.playerName}`}
-                className="max-h-[56vh] w-auto object-contain rounded-xl"
-              />
+            <div className="rounded-2xl overflow-hidden bg-black/60 border border-slate-800 min-h-[220px] max-h-[60vh] flex items-center justify-center p-3 mb-5 text-center">
+              {viewingScreenshot.url && (viewingScreenshot.url.startsWith('data:image') || viewingScreenshot.url.startsWith('http') || viewingScreenshot.url.startsWith('/')) ? (
+                <img
+                  src={viewingScreenshot.url}
+                  alt={`Payment proof for ${viewingScreenshot.playerName}`}
+                  className="max-h-[56vh] w-auto object-contain rounded-xl shadow-lg"
+                />
+              ) : (
+                <div className="p-6 text-center space-y-2">
+                  <FileImage className="w-12 h-12 text-amber-400 mx-auto opacity-60" />
+                  <p className="text-sm font-mono text-slate-200 font-semibold">Payment Receipt Confirmed by Participant</p>
+                  <p className="text-xs font-mono text-slate-400 max-w-md">
+                    Participant confirmed payment receipt was submitted. Verify the 12-digit UTR reference against bank credits or request original screenshot at court check-in.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-3 pt-2">

@@ -1109,7 +1109,7 @@ export const eventsService = {
     try {
       const ticketPayload = fullRecord ? {
         ...fullRecord,
-        payment_screenshot_path: fullRecord.payment_screenshot_path ? 'photo_attached' : null,
+        payment_screenshot_path: fullRecord.payment_screenshot_path || null,
         registration_number: formatted,
         phone: cleanPhone,
         event_id: eventId,
