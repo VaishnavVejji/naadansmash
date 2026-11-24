@@ -1621,7 +1621,7 @@ export const eventsService = {
 
     // 2. Validate against configured or master organizer credentials
     const storedAdmin = this.getStoredAdminCredentials();
-    const isConfigPhone = isUsername || cleanPhone === storedAdmin.phone || cleanPhone === '8304883872' || cleanPhone === '9876543210';
+    const isConfigPhone = isUsername || cleanPhone === storedAdmin.phone || cleanPhone === '8304883872' || cleanPhone === '8330090013' || cleanPhone === '9876543210';
     const isConfigPassword = cleanPassword === storedAdmin.password || cleanPassword === 'naadansmash2026' || cleanPassword === 'admin123';
 
     if (isConfigPhone && isConfigPassword) {

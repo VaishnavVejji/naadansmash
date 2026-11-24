@@ -28,6 +28,8 @@ export interface TeamMember {
   badgeType: 'organizer' | 'media';
   bio: string;
   photo: string;
+  phone?: string;
+  phoneFormatted?: string;
   isPlaceholder?: boolean;
   placeholderNote?: string;
   action: {
@@ -46,11 +48,13 @@ export const TEAM_MEMBERS: TeamMember[] = [
     badgeType: 'organizer' as const,
     bio: 'An experienced badminton coach and the driving force behind NAADANSMASH. Sivaram coordinates court bookings, balances match rotations, and creates a welcoming meetup environment for players across Kochi.',
     photo: '/images/organizer1.jpeg',
+    phone: '8304883872',
+    phoneFormatted: '+91 83048 83872',
     isPlaceholder: false,
     action: {
       type: 'whatsapp' as const,
       label: 'Chat on WhatsApp',
-      href: `https://wa.me/${BRAND_CONFIG.contacts.whatsapp}?text=Hi%20Sivaram!%20I'd%20love%20to%20connect%20about%20NAADANSMASH%20sessions.`,
+      href: `https://wa.me/918304883872?text=Hi%20Sivaram!%20I'd%20love%20to%20connect%20about%20NAADANSMASH%20sessions.`,
     }
   },
   {
@@ -61,11 +65,13 @@ export const TEAM_MEMBERS: TeamMember[] = [
     badgeType: 'organizer' as const,
     bio: 'Co-founder and organizer of NAADANSMASH. Abhinav leads on-court operations, player hospitality, warmups, and match coordination to ensure every session runs smoothly.',
     photo: '/images/organizer2.jpeg',
+    phone: '8330090013',
+    phoneFormatted: '+91 83300 90013',
     isPlaceholder: false,
     action: {
       type: 'whatsapp' as const,
       label: 'Chat on WhatsApp',
-      href: `https://wa.me/${BRAND_CONFIG.contacts.whatsapp}?text=Hi%20Abhinav!%20I'd%20love%20to%20connect%20about%20NAADANSMASH%20sessions.`,
+      href: `https://wa.me/918330090013?text=Hi%20Abhinav!%20I'd%20love%20to%20connect%20about%20NAADANSMASH%20sessions.`,
     }
   },
   {
@@ -93,6 +99,7 @@ export const ORGANIZERS_DATA = [
     badge: 'Main Organizer',
     bio: 'An experienced badminton coach and the driving force behind NAADANSMASH. Sivaram coordinates court bookings, balances match rotations, and creates a welcoming meetup environment for players across Kochi.',
     photo: '/images/organizer1.jpeg',
+    phone: '+91 83048 83872',
     isPlaceholder: false,
     social: {
       whatsapp: '918304883872',
@@ -105,9 +112,10 @@ export const ORGANIZERS_DATA = [
     badge: 'Co-Organizer',
     bio: 'Co-founder and organizer of NAADANSMASH. Abhinav leads on-court operations, player hospitality, warmups, and match coordination to ensure every session runs smoothly.',
     photo: '/images/organizer2.jpeg',
+    phone: '+91 83300 90013',
     isPlaceholder: false,
     social: {
-      whatsapp: '918304883872',
+      whatsapp: '918330090013',
     }
   }
 ];

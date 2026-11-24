@@ -83,9 +83,18 @@ export const Organizers: React.FC = () => {
 
               {/* Action / Connect */}
               <div className="pt-5 border-t border-black/[0.08] flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-wider text-brand-muted">
-                  Kochi Badminton
-                </span>
+                {member.phoneFormatted ? (
+                  <a
+                    href={`tel:+91${member.phone}`}
+                    className="text-xs font-mono font-semibold tracking-wider text-brand-charcoal hover:text-brand-teal transition-colors"
+                  >
+                    {member.phoneFormatted}
+                  </a>
+                ) : (
+                  <span className="text-xs font-mono uppercase tracking-wider text-brand-muted">
+                    Kochi Badminton
+                  </span>
+                )}
 
                 {member.action.type === 'whatsapp' && (
                   <a
