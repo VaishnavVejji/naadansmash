@@ -6,18 +6,18 @@ const EVENTS_STORE_ID = 'ff808181a09d98f701a20984af2b2a21';
 
 const DEFAULT_EVENTS = [
   {
-    id: '22222222-2222-2222-2222-222222222222',
+    id: 'dacca263-30fc-4081-a31c-3a8055e80a9c',
     title: 'Sunday Evening Match Session - Smash Arena',
-    description: 'Weekend evening session scheduled by the coach. 3 hours of structured doubles rotations paired by skill level with refreshments included.',
-    event_date: '2026-11-29',
+    description: 'Join Kochi badminton players for weekend competitive matches with fresh feather shuttles.',
+    event_date: '2026-12-01',
     start_time: '17:30:00',
     end_time: '20:30:00',
-    venue: 'Cochin Sports Arena, Edappally, Kochi',
-    registration_fee: 250,
+    venue: 'Smash Arena Badminton Club, Kochi',
+    registration_fee: 200,
     max_participants: 24,
-    registration_deadline: '2026-11-29T10:30:00+00:00',
+    registration_deadline: null,
     status: 'published',
-    created_at: '2026-11-22T10:44:53.968098+00:00',
+    created_at: '2026-11-24T10:13:22.87691+00:00',
   },
   {
     id: '11111111-1111-1111-1111-111111111111',

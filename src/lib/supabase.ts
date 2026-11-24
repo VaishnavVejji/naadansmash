@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || 'https://odnjkvxqypjklsjgxpoj.supabase.co';
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_cYWbnMxIdT996o4RoYu2Aw_FpgHkkVs';
 
 // Clean the Supabase URL in case it has /rest/v1 or trailing slashes
 function sanitizeSupabaseUrl(url: string): string {

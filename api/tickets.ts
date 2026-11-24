@@ -32,7 +32,7 @@ const VALID_REGISTRATION_COLUMNS = new Set([
   'id', 'registration_number', 'event_id', 'full_name', 'email',
   'phone', 'age', 'gender', 'skill_level', 'playing_category',
   'emergency_contact', 'payment_status', 'attendance_status',
-  'registration_status', 'utr_reference', 'payment_screenshot_path', 'created_at'
+  'utr_reference', 'payment_screenshot_path', 'created_at'
 ]);
 
 function toSupabaseRecord(record: any): any {
