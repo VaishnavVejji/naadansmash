@@ -30,7 +30,8 @@ import {
   ShieldCheck,
   ZoomIn,
   X,
-  Phone
+  Phone,
+  Edit3
 } from 'lucide-react';
 import { DatabaseEvent, PaymentStatus, AttendanceStatus } from '../types';
 import { eventsService } from '../services/eventsService';
@@ -561,6 +562,49 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     }
   };
 
+  const handleReopenEvent = async () => {
+    const targetId = selectedEventId || allEvents[0]?.id;
+    if (!targetId) return;
+
+    const confirmReopen = window.confirm(
+      `Reopen Registrations for this Session?\n\n• The session status will be updated to 'published' across all devices.\n• Players will immediately be able to register and submit payment proofs on the public website.\n\nProceed?`
+    );
+    if (!confirmReopen) return;
+
+    try {
+      setSavingEvent(true);
+      const targetEv = allEvents.find((e) => e.id === targetId);
+      if (!targetEv) return;
+
+      const updatedEv: DatabaseEvent = {
+        ...targetEv,
+        status: 'published',
+      };
+
+      const ok = await eventsService.updateEventManually(updatedEv);
+      if (ok) {
+        setStatus('published');
+        setAllEvents((prev) =>
+          prev.map((e) => (e.id === targetId ? updatedEv : e))
+        );
+        setFeedbackBanner({
+          message: '✓ Session reopened! Registrations are now LIVE and open on the public website.',
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 5000);
+        window.dispatchEvent(new CustomEvent('naadansmash_event_updated'));
+        if (onEventUpdated) onEventUpdated();
+      } else {
+        alert('Failed to reopen session.');
+      }
+    } catch (e) {
+      console.error('Error reopening session:', e);
+      alert('An error occurred while reopening the session.');
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingEvent(true);
@@ -749,6 +793,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   const pendingCount = validRegistrations.filter((r) => r.payment_status === 'submitted' || r.payment_status === 'pending').length;
   const rejectedCount = validRegistrations.filter((r) => r.payment_status === 'rejected').length;
   const activeEvent = allEvents.find((e) => e.id === selectedEventId);
+  const isEventClosed = activeEvent?.status === 'closed' || activeEvent?.status === 'completed';
 
   // Return to public participant website handler
   const handleGoToPublic = () => {
@@ -953,26 +998,46 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-800">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <label className="text-xs font-mono uppercase text-slate-400 font-bold">
+                <label className="text-xs font-mono uppercase text-slate-400 font-bold shrink-0">
                   Active Event Session:
                 </label>
-                <select
-                  value={selectedEventId}
-                  onChange={(e) => {
-                    const newId = e.target.value;
-                    setSelectedEventId(newId);
-                    const ev = allEvents.find((evt) => evt.id === newId);
-                    if (ev) populateEventForm(ev);
-                    loadRoster(newId, false);
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:border-brand-teal outline-none"
-                >
-                  {allEvents.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.title} — {ev.event_date} ({ev.status.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={selectedEventId}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setSelectedEventId(newId);
+                      const ev = allEvents.find((evt) => evt.id === newId);
+                      if (ev) populateEventForm(ev);
+                      loadRoster(newId, false);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:border-brand-teal outline-none"
+                  >
+                    {allEvents.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title} — {ev.event_date} ({ev.status.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Prominent Live Status Badge */}
+                  {activeEvent?.status === 'closed' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/50 text-xs font-mono font-bold shadow-xs">
+                      <Lock className="w-3.5 h-3.5 text-rose-400" />
+                      <span>CLOSED</span>
+                    </span>
+                  ) : activeEvent?.status === 'completed' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/50 text-xs font-mono font-bold shadow-xs">
+                      <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
+                      <span>COMPLETED</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 text-xs font-mono font-bold shadow-xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>OPEN / LIVE</span>
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1001,13 +1066,26 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
               <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
                 <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
                   <span>Registrations</span>
-                  <Users className="w-3.5 h-3.5 text-brand-teal" />
+                  {isEventClosed ? (
+                    <Lock className="w-3.5 h-3.5 text-rose-400" />
+                  ) : (
+                    <Users className="w-3.5 h-3.5 text-brand-teal" />
+                  )}
                 </div>
                 <div className="text-xl sm:text-2xl font-heading font-extrabold text-white">
-                  {registrations.length} <span className="text-xs font-mono text-slate-500 font-normal">/ {activeEvent?.max_participants || 24}</span>
+                  {validRegistrations.length} <span className="text-xs font-mono text-slate-500 font-normal">/ {activeEvent?.max_participants || 24}</span>
                 </div>
-                <div className="mt-1 text-[10px] font-mono text-slate-400">
-                  {activeEvent?.status === 'closed' ? 'Session Closed' : `${Math.max(0, (activeEvent?.max_participants || 24) - registrations.length)} slots open`}
+                <div className="mt-1 text-[10px] font-mono">
+                  {isEventClosed ? (
+                    <span className="text-rose-400 font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                      Session Closed
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      {Math.max(0, (activeEvent?.max_participants || 24) - validRegistrations.length)} slots open
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1060,6 +1138,50 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
               </div>
             </div>
           </div>
+
+          {/* PROMINENT EVENT CLOSED / COMPLETED WARNING BANNER */}
+          {isEventClosed && (
+            <div className="bg-gradient-to-r from-rose-950/80 via-rose-900/50 to-slate-900 border-2 border-rose-500/70 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center shrink-0 shadow-inner">
+                  <Lock className="w-6 h-6 text-rose-400" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-heading font-black text-white text-base sm:text-lg tracking-wide uppercase">
+                      THIS EVENT SESSION IS CLOSED
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase font-black bg-rose-500/30 text-rose-200 border border-rose-500/60">
+                      {activeEvent?.status === 'completed' ? 'COMPLETED' : 'REGISTRATIONS LOCKED'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-rose-200/90 font-mono mt-1 leading-relaxed">
+                    Public player registrations are currently <strong>disabled</strong> on the website. Existing {validRegistrations.length} registrations, tickets, and payment proofs remain safe.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={handleReopenEvent}
+                  disabled={savingEvent}
+                  className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  <CheckCircle className="w-4 h-4 text-slate-950" />
+                  <span>Reopen Registrations (Publish)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('schedule')}
+                  className="w-full md:w-auto px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Schedule</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* B. TAB NAVIGATION BAR */}
           <div className="flex items-center gap-2 border-b border-slate-800 overflow-x-auto pb-2">
@@ -1191,6 +1313,25 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                   </button>
                 </div>
               </div>
+
+              {isEventClosed && (
+                <div className="px-4 py-3 rounded-2xl bg-rose-950/40 border border-rose-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+                  <div className="flex items-center gap-2.5 text-rose-300">
+                    <Lock className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>
+                      Active session is <strong>{activeEvent?.status.toUpperCase()}</strong>. Player registration is locked on the public website.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleReopenEvent}
+                    disabled={savingEvent}
+                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold shrink-0 transition-colors cursor-pointer self-start sm:self-auto"
+                  >
+                    Reopen Session
+                  </button>
+                </div>
+              )}
 
               {/* Payments Table */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
@@ -1366,6 +1507,15 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                 </div>
               </div>
 
+              {isEventClosed && (
+                <div className="px-4 py-3 rounded-2xl bg-rose-950/40 border border-rose-800/70 flex items-center gap-2.5 text-xs font-mono text-rose-300">
+                  <Lock className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>
+                    Session is <strong>{activeEvent?.status.toUpperCase()}</strong>. Court attendance and check-ins can still be performed for all registered players below.
+                  </span>
+                </div>
+              )}
+
               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs font-mono">
@@ -1486,15 +1636,28 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                   </button>
 
                   {!isCreatingNewEvent && (
-                    <button
-                      type="button"
-                      onClick={handleCompleteAndCloseEvent}
-                      className="px-3.5 py-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-800 text-xs font-mono flex items-center gap-1.5"
-                      title="Complete and close this session"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Complete & Close Session</span>
-                    </button>
+                    isEventClosed ? (
+                      <button
+                        type="button"
+                        onClick={handleReopenEvent}
+                        disabled={savingEvent}
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                        title="Reopen registrations for this session"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Reopen Session (Accept Registrations)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleCompleteAndCloseEvent}
+                        className="px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-xs font-mono flex items-center gap-1.5 cursor-pointer"
+                        title="Complete and close this session"
+                      >
+                        <Lock className="w-4 h-4 text-rose-400" />
+                        <span>Complete & Close Session</span>
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -1613,6 +1776,27 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                       <option value="completed">Completed (Archived Match)</option>
                       <option value="draft">Draft</option>
                     </select>
+
+                    {status === 'closed' || status === 'completed' ? (
+                      <div className="mt-2.5 p-3 rounded-xl bg-rose-950/40 border border-rose-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 text-rose-300 text-xs font-mono">
+                          <Lock className="w-4 h-4 shrink-0 text-rose-400" />
+                          <span>Status is set to <strong>{status.toUpperCase()}</strong>. Players cannot register on the website.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setStatus('published')}
+                          className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[11px] font-bold shrink-0 self-start sm:self-auto cursor-pointer"
+                        >
+                          Switch to Published
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-2 p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/50 flex items-center gap-2 text-[11px] font-mono text-emerald-400">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                        <span>Public registrations are <strong>OPEN</strong> on the website.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
