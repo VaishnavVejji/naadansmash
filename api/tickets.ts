@@ -166,7 +166,7 @@ async function fetchCloudTickets(): Promise<any[]> {
     });
     if (res.ok) {
       const data = await res.json();
-      if (data?.data?.tickets && Array.isArray(data.data.tickets) && data.data.tickets.length > 0) {
+      if (data?.data && Array.isArray(data.data.tickets)) {
         memoryStore.set('all_registrations', data.data.tickets);
         return data.data.tickets;
       }
@@ -174,20 +174,24 @@ async function fetchCloudTickets(): Promise<any[]> {
   } catch (e) {
     console.warn('Could not fetch cloud tickets:', e);
   }
-  return memoryStore.get('all_registrations') || DEFAULT_SEED_TICKETS;
+  return memoryStore.get('all_registrations') || [];
 }
 
 async function saveCloudTickets(tickets: any[]): Promise<boolean> {
   memoryStore.set('all_registrations', tickets);
-  for (const t of tickets) {
-    const phone = (t.phone || '').replace(/\D/g, '').slice(-10);
-    const reg = (t.registration_number || '').toUpperCase();
-    if (reg) memoryStore.set(`reg_${reg}`, t);
-    if (phone) {
-      const pList = memoryStore.get(`phone_${phone}`) || [];
-      const filtered = pList.filter((x: any) => (x.registration_number || '').toUpperCase() !== reg);
-      filtered.unshift(t);
-      memoryStore.set(`phone_${phone}`, filtered);
+  if (tickets.length === 0) {
+    memoryStore.clear();
+  } else {
+    for (const t of tickets) {
+      const phone = (t.phone || '').replace(/\D/g, '').slice(-10);
+      const reg = (t.registration_number || '').toUpperCase();
+      if (reg) memoryStore.set(`reg_${reg}`, t);
+      if (phone) {
+        const pList = memoryStore.get(`phone_${phone}`) || [];
+        const filtered = pList.filter((x: any) => (x.registration_number || '').toUpperCase() !== reg);
+        filtered.unshift(t);
+        memoryStore.set(`phone_${phone}`, filtered);
+      }
     }
   }
   try {
@@ -199,6 +203,22 @@ async function saveCloudTickets(tickets: any[]): Promise<boolean> {
         data: { tickets },
       }),
     });
+    if (!res.ok) {
+      // If payload is too large, strip heavy screenshots to guarantee player registration sync
+      const leanTickets = tickets.map((t: any) => ({
+        ...t,
+        payment_screenshot_path: t.payment_screenshot_path && t.payment_screenshot_path.length > 5000 ? null : t.payment_screenshot_path,
+      }));
+      const retryRes = await fetch(`https://api.restful-api.dev/objects/${TICKETS_STORE_ID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'naadansmash_cloud_tickets_v1',
+          data: { tickets: leanTickets },
+        }),
+      });
+      return retryRes.ok;
+    }
     return res.ok;
   } catch (e) {
     console.warn('Could not save cloud tickets:', e);
@@ -225,16 +245,15 @@ export default async function handler(req: Request) {
 
       if (!q) {
         // Return all registered tickets from cloud store
-        let listToReturn = cloudTickets && cloudTickets.length > 0
-          ? cloudTickets.map(formatTicket)
-          : DEFAULT_SEED_TICKETS.map(formatTicket);
+        const listToReturn = Array.isArray(cloudTickets) ? cloudTickets.map(formatTicket) : [];
 
         const eventIdFilter = url.searchParams.get('eventId');
-        if (eventIdFilter) {
-          listToReturn = listToReturn.filter((t: any) => t.event_id === eventIdFilter);
+        let filtered = listToReturn;
+        if (eventIdFilter && eventIdFilter !== 'all') {
+          filtered = filtered.filter((t: any) => !t.event_id || t.event_id === eventIdFilter);
         }
 
-        return new Response(JSON.stringify({ success: true, count: listToReturn.length, tickets: listToReturn }), {
+        return new Response(JSON.stringify({ success: true, count: filtered.length, tickets: filtered }), {
           status: 200,
           headers: CORS_HEADERS,
         });
@@ -410,13 +429,16 @@ export default async function handler(req: Request) {
       const regNumber = url.searchParams.get('reg')?.toUpperCase();
       const eventId = url.searchParams.get('eventId');
       const purgeScreenshots = url.searchParams.get('purgeScreenshots') === 'true';
+      const clearAll = url.searchParams.get('clearAll') === 'true';
 
       let allRegs: any[] = await fetchCloudTickets();
 
       if (purgeScreenshots && eventId) {
         allRegs = allRegs.map((r: any) => (r.event_id === eventId ? { ...r, payment_screenshot_path: null } : r));
+      } else if (clearAll || eventId === 'all') {
+        allRegs = [];
       } else if (eventId && !regId && !regNumber) {
-        allRegs = allRegs.filter((r: any) => r.event_id !== eventId);
+        allRegs = allRegs.filter((r: any) => r.event_id && r.event_id !== eventId);
       } else if (regId || regNumber) {
         allRegs = allRegs.filter(
           (r: any) =>
@@ -431,11 +453,12 @@ export default async function handler(req: Request) {
         try {
           if (regId) await supabase.from('registrations').delete().eq('id', regId);
           else if (regNumber) await supabase.from('registrations').delete().eq('registration_number', regNumber);
-          else if (eventId) await supabase.from('registrations').delete().eq('event_id', eventId);
+          else if (eventId && eventId !== 'all') await supabase.from('registrations').delete().eq('event_id', eventId);
+          else if (clearAll || eventId === 'all') await supabase.from('registrations').delete().neq('id', '0');
         } catch {}
       }
 
-      return new Response(JSON.stringify({ success: true, message: 'Registration deleted from cloud store.' }), {
+      return new Response(JSON.stringify({ success: true, message: 'Registrations updated in cloud store.' }), {
         status: 200,
         headers: CORS_HEADERS,
       });

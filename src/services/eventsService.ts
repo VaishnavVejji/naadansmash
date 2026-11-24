@@ -1830,11 +1830,13 @@ export const eventsService = {
       if (res.ok) {
         const data = await res.json();
         const list = data.tickets || data.registrations;
-        if (Array.isArray(list) && list.length > 0) {
-          return list.map((r: any) => ({
+        if (Array.isArray(list)) {
+          const mapped = list.map((r: any) => ({
             ...r,
             registration_number: formatDisplayTicketNumber(r.registration_number),
           }));
+          saveStoredRegistrations(mapped);
+          return mapped;
         }
       }
     } catch (e) {
@@ -2189,21 +2191,24 @@ export const eventsService = {
     }
 
     try {
-      const list = getStoredRegistrations();
-      const updated = list.filter((r: any) => r.event_id !== eventId);
-      saveStoredRegistrations(updated);
+      saveStoredRegistrations([]);
 
       const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
       const filteredTickets = myTickets.filter((t: any) => t.eventId !== eventId);
       localStorage.setItem('naadansmash_my_tickets', JSON.stringify(filteredTickets));
 
       // Sync clear to cloud store
-      await fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}`, {
+      await fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}&clearAll=true`, {
         method: 'DELETE',
       });
     } catch (e) {
       console.warn('Local clear exception:', e);
     }
+
+    try {
+      window.dispatchEvent(new CustomEvent('naadansmash_roster_updated'));
+      window.dispatchEvent(new CustomEvent('naadansmash_event_updated'));
+    } catch {}
 
     return true;
   },

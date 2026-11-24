@@ -26,6 +26,7 @@ import {
   Calendar,
   ArrowLeft,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
   ZoomIn,
   X,
@@ -262,10 +263,10 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   useEffect(() => {
     if (session) {
       syncAllFromCloud(false);
-      // Live cross-device sync: poll every 7 seconds
+      // Live cross-device sync: poll every 4 seconds for instant updates across devices
       const pollTimer = setInterval(() => {
         syncAllFromCloud(true);
-      }, 7000);
+      }, 4000);
       const handleVisChange = () => {
         if (document.visibilityState === 'visible') {
           syncAllFromCloud(true);
@@ -276,6 +277,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
       };
 
       document.addEventListener('visibilitychange', handleVisChange);
+      window.addEventListener('focus', handleSyncEvent);
       window.addEventListener('naadansmash_event_updated', handleSyncEvent);
       window.addEventListener('naadansmash_payment_updated', handleSyncEvent);
       window.addEventListener('naadansmash_roster_updated', handleSyncEvent);
@@ -283,6 +285,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
       return () => {
         clearInterval(pollTimer);
         document.removeEventListener('visibilitychange', handleVisChange);
+        window.removeEventListener('focus', handleSyncEvent);
         window.removeEventListener('naadansmash_event_updated', handleSyncEvent);
         window.removeEventListener('naadansmash_payment_updated', handleSyncEvent);
         window.removeEventListener('naadansmash_roster_updated', handleSyncEvent);
@@ -426,21 +429,23 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   };
 
   const handleClearSessionRegistrations = async () => {
-    if (!selectedEventId) return;
+    const targetId = selectedEventId || allEvents[0]?.id || 'all';
     const confirmClear = window.confirm(
-      `⚠️ RESET ROSTER WARNING:\nAre you sure you want to clear ALL ${registrations.length} registrations for this event?\n\nThis will remove every participant for this session, reset all slot reservations, and free all phone numbers so they can register again for the next session.`
+      `⚠️ START FRESH / REMOVE ALL PAYMENT & REGISTRATION RECORDS:\n\nAre you sure you want to remove ALL ${registrations.length} payment and registration records for this event session?\n\n• All player records, payment approvals, receipts, and tickets will be cleared.\n• Court slots will be restored to maximum capacity.\n• Phone numbers will be freed so players can register afresh.\n• Changes will instantly sync to all admin devices.\n\nProceed to start fresh?`
     );
     if (!confirmClear) return;
 
     try {
-      const ok = await eventsService.clearEventRegistrations(selectedEventId);
+      const ok = await eventsService.clearEventRegistrations(targetId);
       if (ok) {
         setRegistrations([]);
         setFeedbackBanner({
-          message: `✓ Event roster reset. All registrations cleared and phone numbers freed for the next session!`,
+          message: `✓ All payment and registration records removed. You are now starting fresh with 0 registrations!`,
           type: 'success',
         });
         setTimeout(() => setFeedbackBanner(null), 5000);
+        window.dispatchEvent(new CustomEvent('naadansmash_roster_updated'));
+        window.dispatchEvent(new CustomEvent('naadansmash_event_updated'));
         if (onEventUpdated) onEventUpdated();
       } else {
         alert('Failed to clear session registrations');
@@ -1146,11 +1151,19 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                   ))}
                   <button
                     onClick={handlePurgeSessionScreenshots}
-                    className="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-xs font-mono flex items-center gap-1.5 ml-auto"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono flex items-center gap-1.5 ml-auto"
                     title="Purge all uploaded screenshots for this event to free cloud database space"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5 text-amber-400" />
                     <span>Clean Storage</span>
+                  </button>
+                  <button
+                    onClick={handleClearSessionRegistrations}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700 text-xs font-mono flex items-center gap-1.5 shadow-xs active:scale-95 transition-all"
+                    title="Remove all player payment and registration records to start a completely fresh session"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Reset & Start Fresh</span>
                   </button>
                 </div>
               </div>
