@@ -203,6 +203,20 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   useEffect(() => {
     if (session && selectedEventId) {
       loadRoster(selectedEventId);
+      // Live cross-device sync: poll roster every 8 seconds
+      const pollTimer = setInterval(() => {
+        loadRoster(selectedEventId);
+      }, 8000);
+      const handleVisChange = () => {
+        if (document.visibilityState === 'visible') {
+          loadRoster(selectedEventId);
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisChange);
+      return () => {
+        clearInterval(pollTimer);
+        document.removeEventListener('visibilitychange', handleVisChange);
+      };
     }
   }, [session, selectedEventId, loadRoster]);
 

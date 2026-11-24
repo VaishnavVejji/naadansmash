@@ -358,10 +358,11 @@ export default async function handler(req: Request) {
       const body = await req.json();
       const regNumber = (body.registration_number || body.regNumber || '').toUpperCase();
       const regId = body.id || body.regId;
+      const cleanPhone = (body.phone || '').replace(/\D/g, '').slice(-10);
 
-      if (!regNumber && !regId) {
+      if (!regNumber && !regId && !cleanPhone) {
         return new Response(
-          JSON.stringify({ success: false, message: 'Registration number or ID required for update.' }),
+          JSON.stringify({ success: false, message: 'Registration number, ID, or phone required for update.' }),
           { status: 400, headers: CORS_HEADERS }
         );
       }
@@ -369,8 +370,9 @@ export default async function handler(req: Request) {
       let allRegs: any[] = await fetchCloudTickets();
       const idx = allRegs.findIndex(
         (r: any) =>
+          (regId && r.id === regId) ||
           (regNumber && (r.registration_number || '').toUpperCase() === regNumber) ||
-          (regId && r.id === regId)
+          (cleanPhone && (r.phone || '').replace(/\D/g, '').slice(-10) === cleanPhone)
       );
 
       let target: any = null;

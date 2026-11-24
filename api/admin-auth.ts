@@ -111,7 +111,8 @@ export default async function handler(req: Request) {
     // -------------------------------------------------------------
     if (req.method === 'PUT') {
       const body = await req.json();
-      const { newPhone, newPassword } = body;
+      const newPhone = body.newPhone || body.phone;
+      const newPassword = body.newPassword || body.password;
 
       if (!newPhone && !newPassword) {
         return new Response(

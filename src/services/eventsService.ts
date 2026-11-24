@@ -464,7 +464,7 @@ export const eventsService = {
   async getPaymentSettings(): Promise<PaymentSettings> {
     // 1. Primary: Fetch from cloud sync store (/api/payment-settings)
     try {
-      const res = await fetch('/api/payment-settings');
+      const res = await fetch(`/api/payment-settings?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data?.success && data.settings?.upi_id) {
@@ -540,11 +540,11 @@ export const eventsService = {
 
     // 1. Sync to cloud store (/api/payment-settings)
     try {
-      fetch('/api/payment-settings', {
+      await fetch('/api/payment-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
-      }).catch((e) => console.warn('Cloud payment update background error:', e));
+      });
     } catch (e) {
       console.warn('Cloud payment update failed:', e);
     }
@@ -736,14 +736,25 @@ export const eventsService = {
       return { success: false, message: 'The registration deadline for this session has passed.' };
     }
 
-    // Check duplicate phone (one registration per phone number per event session)
+    // Check duplicate phone (one registration per phone number per event session) across all devices
     const storedRegs = getStoredRegistrations();
-    const isDuplicate = storedRegs.some(
+    let isDuplicate = storedRegs.some(
       (r: any) =>
         r.event_id === payload.eventId &&
         r.phone?.replace(/[^0-9]/g, '').slice(-10) === cleanPhone.slice(-10) &&
         r.payment_status !== 'rejected'
     );
+
+    if (!isDuplicate) {
+      try {
+        const cloudTickets = await this.getUserTickets(cleanPhone);
+        isDuplicate = cloudTickets.some(
+          (t: any) =>
+            t.event_id === payload.eventId &&
+            t.payment_status !== 'rejected'
+        );
+      } catch {}
+    }
 
     if (isDuplicate) {
       return {
@@ -878,7 +889,7 @@ export const eventsService = {
 
     // 2a. Check cloud sync store (/api/tickets?q=...)
     try {
-      const res = await fetch(`/api/tickets?q=${encodeURIComponent(cleanReg)}`);
+      const res = await fetch(`/api/tickets?q=${encodeURIComponent(cleanReg)}&t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.found && data.registration) {
@@ -1217,7 +1228,7 @@ export const eventsService = {
     // 1. Fetch from cloud sync store (/api/tickets?q=...)
     try {
       const fetchQuery = cleanPhone || cleanReg;
-      const res = await fetch(`/api/tickets?q=${encodeURIComponent(fetchQuery)}`);
+      const res = await fetch(`/api/tickets?q=${encodeURIComponent(fetchQuery)}&t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.tickets && Array.isArray(data.tickets)) {
@@ -1233,7 +1244,7 @@ export const eventsService = {
 
       // If specific query returned 0, fetch all cloud tickets as a reliable fallback
       if (ticketsMap.size === 0) {
-        const allRes = await fetch('/api/tickets');
+        const allRes = await fetch(`/api/tickets?t=${Date.now()}`, { cache: 'no-store' });
         if (allRes.ok) {
           const allData = await allRes.json();
           if (allData.tickets && Array.isArray(allData.tickets)) {
@@ -1890,6 +1901,21 @@ export const eventsService = {
       reg.attendance_status = attendanceStatus;
       saveStoredRegistrations(list);
     }
+
+    // Sync attendance update to universal cross-device cloud store
+    try {
+      await fetch('/api/tickets', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: regId,
+          attendance_status: attendanceStatus,
+        }),
+      });
+    } catch (e) {
+      console.warn('Cloud attendance update failed:', e);
+    }
+
     return true;
   },
 
@@ -1964,6 +1990,25 @@ export const eventsService = {
       }
     }
 
+    // Sync payment submission to universal cross-device cloud store
+    try {
+      await fetch('/api/tickets', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: reg.id,
+          regNumber: cleanReg,
+          phone: cleanPhone,
+          utr_reference: reg.utr_reference,
+          payment_screenshot_path: reg.payment_screenshot_path,
+          payment_status: 'pending',
+          registration_status: 'payment_submitted',
+        }),
+      });
+    } catch (e) {
+      console.warn('Cloud payment submission sync failed:', e);
+    }
+
     return {
       success: true,
       message: 'Your payment details have been submitted for verification.',
@@ -2029,7 +2074,7 @@ export const eventsService = {
 
     // Sync status update to cross-device cloud store
     try {
-      fetch('/api/tickets', {
+      await fetch('/api/tickets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2038,8 +2083,10 @@ export const eventsService = {
           registration_status: registrationStatus,
           rejection_reason: rejectionReason,
         }),
-      }).catch(() => {});
-    } catch {}
+      });
+    } catch (e) {
+      console.warn('Cloud ticket status sync failed:', e);
+    }
 
     // Send email notification based on verification status change
     let emailResult: EmailSendResult | undefined;
@@ -2118,9 +2165,9 @@ export const eventsService = {
       }
 
       // Sync deletion to cloud store
-      fetch(`/api/tickets?id=${encodeURIComponent(regId)}&phone=${encodeURIComponent(phone || '')}`, {
+      await fetch(`/api/tickets?id=${encodeURIComponent(regId)}&phone=${encodeURIComponent(phone || '')}`, {
         method: 'DELETE',
-      }).catch(() => {});
+      });
     } catch (e) {
       console.warn('Local delete exception:', e);
     }
@@ -2151,9 +2198,9 @@ export const eventsService = {
       localStorage.setItem('naadansmash_my_tickets', JSON.stringify(filteredTickets));
 
       // Sync clear to cloud store
-      fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}`, {
+      await fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}`, {
         method: 'DELETE',
-      }).catch(() => {});
+      });
     } catch (e) {
       console.warn('Local clear exception:', e);
     }
@@ -2197,11 +2244,11 @@ export const eventsService = {
       localStorage.setItem('naadansmash_my_tickets', JSON.stringify(updatedTickets));
 
       // Sync screenshot deletion to cloud store
-      fetch('/api/tickets', {
+      await fetch('/api/tickets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: regId, payment_screenshot_path: null }),
-      }).catch(() => {});
+      });
     } catch (e) {
       console.warn('Local delete screenshot exception:', e);
     }
@@ -2253,9 +2300,9 @@ export const eventsService = {
       localStorage.setItem('naadansmash_my_tickets', JSON.stringify(updatedTickets));
 
       // Sync screenshot purge to cloud store
-      fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}&purgeScreenshots=true`, {
+      await fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}&purgeScreenshots=true`, {
         method: 'DELETE',
-      }).catch(() => {});
+      });
     } catch (e) {
       console.warn('Local purge exception:', e);
     }

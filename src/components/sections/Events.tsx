@@ -32,24 +32,29 @@ export const Events: React.FC<EventsProps> = ({
     const handleEventUpdate = () => loadEvents();
     window.addEventListener('naadansmash_event_updated', handleEventUpdate);
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') loadEvents();
+      if (document.visibilityState === 'visible') loadEvents(true);
     };
     document.addEventListener('visibilitychange', handleVisibility);
+    // Live cross-device sync: background poll every 8 seconds
+    const pollInterval = setInterval(() => {
+      loadEvents(true);
+    }, 8000);
     return () => {
       window.removeEventListener('naadansmash_event_updated', handleEventUpdate);
       document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(pollInterval);
     };
   }, []);
 
-  const loadEvents = async () => {
-    setLoading(true);
+  const loadEvents = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const data = await eventsService.getEvents();
       setEvents(data);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
