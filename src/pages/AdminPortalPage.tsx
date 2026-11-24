@@ -20,7 +20,7 @@ import {
   Send,
   Check,
   Download,
-  PlusCircle,
+  PlusCircle as _PlusCircle,
   KeyRound,
   Trash2,
   Calendar,
@@ -99,10 +99,10 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   // Event schedule editing state
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
-  const [startTime, setStartTime] = useState('17:30');
-  const [endTime, setEndTime] = useState('20:30');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [venue, setVenue] = useState('');
-  const [fee, setFee] = useState(250);
+  const [fee, setFee] = useState(0);
   const [maxParticipants, setMaxParticipants] = useState(24);
   const [status, setStatus] = useState('published');
   const [description, setDescription] = useState('');
@@ -110,7 +110,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   const [accountName, setAccountName] = useState('');
   const [savingEvent, setSavingEvent] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isCreatingNewEvent, setIsCreatingNewEvent] = useState(false);
+  const [isCreatingNewEvent, _setIsCreatingNewEvent] = useState(false);
   const [isStartEventModalOpen, setIsStartEventModalOpen] = useState(false);
 
   // Communications & Notifications
@@ -532,53 +532,35 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   // 3. End Event -> completes session, main page shows "Next event will be notified soon"
   // =========================================================================
 
-  // 1. START EVENT (WITH EVENT DETAILS FORM)
+  // 1. START EVENT (OPEN REGISTRATIONS)
   const handleStartAndPublishEvent = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSavingEvent(true);
 
     try {
-      if (isCreatingNewEvent) {
-        const created = await eventsService.createEvent({
-          title: title.trim() || 'Sunday Evening Match Session - Smash Arena',
-          description: description.trim(),
-          event_date: eventDate,
-          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-          venue: venue.trim() || 'Smash Arena Badminton Club, Kochi',
-          registration_fee: Number(fee),
-          max_participants: Number(maxParticipants),
-          status: 'published',
-        });
+      const targetId = selectedEventId || allEvents[0]?.id;
+      const currentEvent = allEvents.find((ev) => ev.id === targetId) || allEvents[0] || ({} as DatabaseEvent);
 
-        setAllEvents((prev) => [created, ...prev.map((ev) => ({ ...ev, status: 'completed' as const }))]);
-        setSelectedEventId(created.id);
-        setIsCreatingNewEvent(false);
-      } else {
-        const targetId = selectedEventId || allEvents[0]?.id || '22222222-2222-2222-2222-222222222222';
-        const currentEvent = allEvents.find((ev) => ev.id === targetId) || allEvents[0] || ({} as DatabaseEvent);
+      const updated: DatabaseEvent = {
+        ...currentEvent,
+        id: targetId || currentEvent.id,
+        title: title.trim() || currentEvent.title,
+        event_date: eventDate || currentEvent.event_date,
+        start_time: startTime.length === 5 ? `${startTime}:00` : (startTime || currentEvent.start_time),
+        end_time: endTime.length === 5 ? `${endTime}:00` : (endTime || currentEvent.end_time),
+        venue: venue.trim() || currentEvent.venue,
+        registration_fee: Number(fee) || currentEvent.registration_fee,
+        max_participants: Number(maxParticipants) || currentEvent.max_participants,
+        status: 'published',
+        description: description.trim() || currentEvent.description,
+      };
 
-        const updated: DatabaseEvent = {
-          ...currentEvent,
-          id: targetId,
-          title: title.trim() || 'Sunday Evening Match Session - Smash Arena',
-          event_date: eventDate,
-          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-          venue: venue.trim() || 'Smash Arena Badminton Club, Kochi',
-          registration_fee: Number(fee),
-          max_participants: Number(maxParticipants),
-          status: 'published',
-          description: description.trim(),
-        };
-
-        await eventsService.updateEventManually(updated);
-        setAllEvents((prev) => {
-          return prev.map((ev) => (ev.id === targetId ? updated : { ...ev, status: 'completed' as const }));
-        });
-        setSelectedEventId(updated.id);
-        populateEventForm(updated);
-      }
+      await eventsService.updateEventManually(updated);
+      setAllEvents((prev) => {
+        return prev.map((ev) => (ev.id === updated.id ? updated : { ...ev, status: 'completed' as const }));
+      });
+      setSelectedEventId(updated.id);
+      populateEventForm(updated);
 
       setStatus('published');
       setIsStartEventModalOpen(false);
@@ -685,48 +667,30 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     setSaveSuccess(false);
 
     try {
-      if (isCreatingNewEvent) {
-        const created = await eventsService.createEvent({
-          title,
-          description,
-          event_date: eventDate,
-          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-          venue,
-          registration_fee: Number(fee),
-          max_participants: Number(maxParticipants),
-          status: status as any,
-        });
+      const targetId = selectedEventId || allEvents[0]?.id;
+      const currentEvent = allEvents.find((ev) => ev.id === targetId) || allEvents[0] || {} as DatabaseEvent;
 
-        setAllEvents((prev) => [...prev, created]);
-        setSelectedEventId(created.id);
-        setIsCreatingNewEvent(false);
-      } else {
-        const targetId = selectedEventId || allEvents[0]?.id || '22222222-2222-2222-2222-222222222222';
-        const currentEvent = allEvents.find((ev) => ev.id === targetId) || allEvents[0] || {} as DatabaseEvent;
+      const updated: DatabaseEvent = {
+        ...currentEvent,
+        id: targetId || currentEvent.id,
+        title: title.trim(),
+        event_date: eventDate,
+        start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
+        end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
+        venue: venue.trim(),
+        registration_fee: Number(fee),
+        max_participants: Number(maxParticipants),
+        status: status as any,
+        description: description.trim(),
+      };
 
-        const updated: DatabaseEvent = {
-          ...currentEvent,
-          id: targetId,
-          title: title.trim(),
-          event_date: eventDate,
-          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-          venue: venue.trim(),
-          registration_fee: Number(fee),
-          max_participants: Number(maxParticipants),
-          status: status as any,
-          description: description.trim(),
-        };
-
-        await eventsService.updateEventManually(updated);
-        setAllEvents((prev) => {
-          const exists = prev.some((ev) => ev.id === updated.id);
-          return exists ? prev.map((ev) => (ev.id === updated.id ? updated : ev)) : [updated, ...prev];
-        });
-        setSelectedEventId(updated.id);
-        populateEventForm(updated);
-      }
+      await eventsService.updateEventManually(updated);
+      setAllEvents((prev) => {
+        const exists = prev.some((ev) => ev.id === updated.id);
+        return exists ? prev.map((ev) => (ev.id === updated.id ? updated : ev)) : [updated, ...prev];
+      });
+      setSelectedEventId(updated.id);
+      populateEventForm(updated);
 
       if (upiId.trim()) {
         await eventsService.updatePaymentSettings({
@@ -1745,89 +1709,59 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: EVENT SCHEDULE & SESSION MANAGER                                    */}
+          {/* TAB 3: SESSION DETAILS EDITOR                                             */}
           {/* ========================================================================= */}
           {activeTab === 'schedule' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800 mb-6">
                 <div>
                   <h3 className="font-heading font-extrabold text-xl text-white uppercase tracking-tight">
-                    {isCreatingNewEvent ? 'Create New Match Session' : 'Edit Event Session Details'}
+                    Session Details
                   </h3>
                   <p className="text-xs text-slate-400 font-mono mt-1">
-                    Universal control: changes reflect immediately across public website and registration forms.
+                    Edit the session details and save. Changes reflect immediately on the public website.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isCreatingNewEvent) {
-                        setIsCreatingNewEvent(true);
-                        setTitle('Sunday Evening Match Session - Smash Arena');
-                        setEventDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
-                        setStartTime('17:30');
-                        setEndTime('20:30');
-                        setVenue('Smash Arena Badminton Club, Kochi');
-                        setFee(250);
-                        setMaxParticipants(24);
-                        setStatus('published');
-                        setDescription('Join Kochi badminton players for weekend competitive matches with fresh feather shuttles.');
-                      } else {
-                        setIsCreatingNewEvent(false);
-                        const cur = allEvents.find((e) => e.id === selectedEventId);
-                        if (cur) populateEventForm(cur);
-                      }
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono transition-colors border border-slate-700 flex items-center gap-1.5"
-                  >
-                    <PlusCircle className="w-4 h-4 text-brand-teal" />
-                    <span>{isCreatingNewEvent ? 'Cancel New Session' : 'Create New Session'}</span>
-                  </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {status !== 'published' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleStartAndPublishEvent()}
+                      disabled={savingEvent}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="Open registrations on public website"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Start Event</span>
+                    </button>
+                  ) : null}
 
-                  {!isCreatingNewEvent && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {status !== 'published' ? (
-                        <button
-                          type="button"
-                          onClick={() => handleStartAndPublishEvent()}
-                          disabled={savingEvent}
-                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                          title="Open registrations on public website"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Start Event (Open Registrations)</span>
-                        </button>
-                      ) : null}
+                  {status === 'published' ? (
+                    <button
+                      type="button"
+                      onClick={handleCloseRegistration}
+                      disabled={savingEvent}
+                      className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="Lock registrations on website"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Close Registration</span>
+                    </button>
+                  ) : null}
 
-                      {status !== 'closed' ? (
-                        <button
-                          type="button"
-                          onClick={handleCloseRegistration}
-                          disabled={savingEvent}
-                          className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                          title="Lock registrations on website"
-                        >
-                          <Lock className="w-3.5 h-3.5" />
-                          <span>Close Registration</span>
-                        </button>
-                      ) : null}
-
-                      {status !== 'completed' ? (
-                        <button
-                          type="button"
-                          onClick={handleEndEvent}
-                          disabled={savingEvent}
-                          className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-mono text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                          title="End session (main page shows 'Next event will be notified soon')"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
-                          <span>End Event</span>
-                        </button>
-                      ) : null}
-                    </div>
-                  )}
+                  {status !== 'completed' ? (
+                    <button
+                      type="button"
+                      onClick={handleEndEvent}
+                      disabled={savingEvent}
+                      className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-mono text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="End session (main page shows 'Next event will be notified soon')"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
+                      <span>End Event</span>
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -1842,7 +1776,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
-                      placeholder="e.g. Sunday Evening Match Session - Smash Arena"
+                      placeholder="Session title"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono focus:border-brand-teal outline-none"
                     />
                   </div>
@@ -1896,7 +1830,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                       value={venue}
                       onChange={(e) => setVenue(e.target.value)}
                       required
-                      placeholder="e.g. Smash Arena Badminton Club, Kochi"
+                      placeholder="Venue name and address"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono focus:border-brand-teal outline-none"
                     />
                   </div>
@@ -1912,6 +1846,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                         value={fee}
                         onChange={(e) => setFee(Number(e.target.value))}
                         required
+                        placeholder="0"
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono focus:border-brand-teal outline-none"
                       />
                     </div>
@@ -1977,7 +1912,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Provide details about court type, shuttles provided, footwear requirements..."
+                    placeholder="Describe the session — court type, shuttles, footwear, etc."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono focus:border-brand-teal outline-none"
                   />
                 </div>
@@ -1989,7 +1924,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                     className="px-6 py-3 rounded-xl bg-brand-teal hover:bg-brand-teal/90 text-brand-black font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
                   >
                     {savingEvent ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    <span>{isCreatingNewEvent ? 'Create Match Session' : 'Save Session Changes'}</span>
+                    <span>Save Changes</span>
                   </button>
 
                   {saveSuccess && (

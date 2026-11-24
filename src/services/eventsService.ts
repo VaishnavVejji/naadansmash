@@ -293,37 +293,7 @@ export const eventsService = {
    * Fetches events from cloud sync store, Supabase, or fallback cache and computes available slots.
    */
   async getEvents(): Promise<DatabaseEvent[]> {
-    // 1. Primary: Fetch from cloud sync store (/api/events)
-    try {
-      const res = await fetch(`/api/events?t=${Date.now()}`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.success && Array.isArray(data.events) && data.events.length > 0) {
-          const mapped: DatabaseEvent[] = data.events.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            description: item.description || '',
-            event_date: item.event_date,
-            start_time: item.start_time,
-            end_time: item.end_time,
-            venue: item.venue,
-            registration_fee: Number(item.registration_fee || 250),
-            max_participants: Number(item.max_participants || 24),
-            registration_deadline: item.registration_deadline,
-            status: item.status,
-            created_at: item.created_at,
-            available_slots: item.available_slots ?? Number(item.max_participants || 24),
-            isHistorical: item.isHistorical === true || (item.event_date ? item.event_date < '2026-11-23' : false),
-          }));
-
-          saveStoredEvents(mapped);
-          return mapped;
-        }
-      }
-    } catch (e) {
-      console.warn('Cloud /api/events fetch exception, using database fallback:', e);
-    }
-
+    // 1. Primary: Direct query from Supabase PostgreSQL database
     const client = supabase;
     if (isSupabaseConfigured && client) {
       try {
@@ -358,8 +328,8 @@ export const eventsService = {
                 start_time: item.start_time,
                 end_time: item.end_time,
                 venue: item.venue,
-                registration_fee: Number(item.registration_fee),
-                max_participants: item.max_participants,
+                registration_fee: Number(item.registration_fee || 250),
+                max_participants: Number(item.max_participants || 24),
                 registration_deadline: item.registration_deadline,
                 status: item.status,
                 created_at: item.created_at,
@@ -369,33 +339,43 @@ export const eventsService = {
             })
           );
 
-          // Overlay local admin edits so updates reflect immediately without waiting or stale cache
-          const storedEvents = getStoredEvents();
-          const storedMap = new Map(storedEvents.map((e) => [e.id, e]));
-          const merged: DatabaseEvent[] = mapped.map((item) => {
-            const local = storedMap.get(item.id);
-            if (local) {
-              return {
-                ...item,
-                ...local,
-                available_slots: local.available_slots ?? item.available_slots,
-              };
-            }
-            return item;
-          });
-
-          // Add any local-only events
-          for (const s of storedEvents) {
-            if (!merged.some((m) => m.id === s.id)) {
-              merged.push(s);
-            }
-          }
-
-          return merged;
+          saveStoredEvents(mapped);
+          return mapped;
         }
       } catch (err) {
-        console.warn('Supabase getEvents query failed, using local cache', err);
+        console.warn('Supabase getEvents query failed, attempting cloud fallback', err);
       }
+    }
+
+    // 2. Secondary fallback: Fetch from cloud sync store (/api/events)
+    try {
+      const res = await fetch(`/api/events?t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.events) && data.events.length > 0) {
+          const mapped: DatabaseEvent[] = data.events.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description || '',
+            event_date: item.event_date,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            venue: item.venue,
+            registration_fee: Number(item.registration_fee || 250),
+            max_participants: Number(item.max_participants || 24),
+            registration_deadline: item.registration_deadline,
+            status: item.status,
+            created_at: item.created_at,
+            available_slots: item.available_slots ?? Number(item.max_participants || 24),
+            isHistorical: item.isHistorical === true || (item.event_date ? item.event_date < '2026-11-23' : false),
+          }));
+
+          saveStoredEvents(mapped);
+          return mapped;
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud /api/events fetch exception, using database fallback:', e);
     }
 
     return getStoredEvents();
