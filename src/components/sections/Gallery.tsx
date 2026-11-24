@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Maximize2, Camera, Images, ArrowRight, Folder } from 'lucide-react';
+import { Maximize2, Images, Folder } from 'lucide-react';
 import { GALLERY_IMAGES, FIRST_SESSION_IMAGES, SECOND_SESSION_IMAGES } from '../../data/galleryData';
 import { GalleryImage } from '../../types';
 
@@ -92,51 +92,21 @@ export const Gallery: React.FC<GalleryProps> = ({ onImageSelect }) => {
         >
           <img
             src={mainImage.src}
-            alt={mainImage.title}
+            alt={mainImage.title || 'NaadanSmash Session Photo'}
             className="w-full h-full object-cover object-center group-hover:scale-[1.01] transition-transform duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-
-          {/* Top Badges */}
-          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2.5">
-            <span className="px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-[11px] font-mono uppercase tracking-wider border border-white/20 flex items-center gap-2 shadow-xs">
-              <Camera className="w-3.5 h-3.5 text-brand-teal" />
-              <span>{mainImage.tag || 'Official Community Photo'}</span>
-            </span>
-            <span className="px-3.5 py-1.5 rounded-full bg-brand-teal text-white text-[11px] font-mono uppercase tracking-wider font-semibold">
-              Kochi, Kerala
-            </span>
-          </div>
 
           <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-            <div className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm text-brand-black flex items-center justify-center shadow-lg group-hover:bg-white transition-colors">
-              <Maximize2 className="w-4 h-4 text-brand-teal" />
+            <div className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm text-brand-black flex items-center justify-center shadow-lg group-hover:bg-brand-teal group-hover:text-white transition-colors">
+              <Maximize2 className="w-4 h-4" />
             </div>
           </div>
 
-          {/* Bottom Caption & Action */}
-          <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7 sm:right-7 flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-white">
-            <div className="max-w-xl">
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/70 block mb-1">
-                {selectedFolder === 's1'
-                  ? 'FOLDER: FIRST SESSION • INAUGURAL SMASH'
-                  : selectedFolder === 's2'
-                  ? 'FOLDER: SECOND SESSION • WEEKEND SMASH'
-                  : 'NAADANSMASH COLLECTIVE • PAST 2 SESSIONS'}
-              </span>
-              <h3 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white uppercase tracking-tight">
-                {mainImage.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-white/80 mt-1 leading-relaxed">
-                {mainImage.caption}
-              </p>
-            </div>
-
-            <div className="shrink-0">
-              <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-brand-black text-xs font-mono uppercase tracking-wider font-bold shadow-lg group-hover:bg-brand-teal group-hover:text-white transition-colors">
-                <span>See More Photos ({totalCount})</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
+          {/* Clean Action Button */}
+          <div className="absolute bottom-5 right-5 sm:bottom-7 sm:right-7">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black/75 hover:bg-black backdrop-blur-md text-white text-xs font-mono uppercase tracking-wider font-semibold shadow-lg transition-colors border border-white/20">
+              <Images className="w-4 h-4 text-brand-teal" />
+              <span>View All ({totalCount})</span>
             </div>
           </div>
         </div>

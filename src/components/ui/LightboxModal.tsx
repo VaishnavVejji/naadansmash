@@ -49,11 +49,6 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
           <span className="text-xs uppercase tracking-widest font-mono text-brand-ice font-semibold bg-brand-charcoal/80 px-3 py-1.5 rounded-full border border-white/10">
             {currentIndex + 1} / {images.length}
           </span>
-          {currentImage.tag && (
-            <span className="hidden sm:inline-block text-xs font-semibold uppercase tracking-wider text-brand-teal bg-brand-ice/10 px-3 py-1.5 rounded-full border border-brand-teal/20">
-              {currentImage.tag}
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -69,7 +64,7 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
       </div>
 
       {/* Main Center Image Display with Navigation Arrows */}
-      <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden">
+      <div className="relative flex-1 flex items-center justify-center my-2 sm:my-4 overflow-hidden">
         {/* Previous Button */}
         <button
           onClick={(e) => {
@@ -84,11 +79,11 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         </button>
 
         {/* Central Image */}
-        <div className="max-w-5xl max-h-[75vh] sm:max-h-[80vh] flex items-center justify-center p-2">
+        <div className="max-w-6xl max-h-[85vh] flex items-center justify-center p-2">
           <img
             src={currentImage.src}
-            alt={currentImage.title}
-            className="max-w-full max-h-[75vh] sm:max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/10"
+            alt={currentImage.title || 'NaadanSmash Gallery Photo'}
+            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10"
           />
         </div>
 
@@ -104,16 +99,6 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         >
           <ChevronRight className="w-6 h-6" />
         </button>
-      </div>
-
-      {/* Bottom Information Bar */}
-      <div className="max-w-3xl mx-auto w-full text-center bg-brand-charcoal/80 border border-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 z-20 text-brand-white">
-        <h4 className="font-heading font-bold text-lg sm:text-xl text-brand-white mb-1">
-          {currentImage.title}
-        </h4>
-        <p className="text-xs sm:text-sm text-brand-ice/80 max-w-xl mx-auto">
-          {currentImage.caption}
-        </p>
       </div>
     </div>
   );
