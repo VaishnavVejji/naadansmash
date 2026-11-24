@@ -11,9 +11,8 @@
 DELETE FROM public.registrations;
 
 -- --------------------------------------------------------------------
--- 2. SETUP PRODUCTION EVENTS (SESSION #2 PUBLISHED & OPEN WITH 24 SLOTS)
+-- 2. SETUP PRODUCTION EVENT #2 (PUBLISHED, 24 AVAILABLE SLOTS, ₹250 FEE)
 -- --------------------------------------------------------------------
--- Ensure Event #2 is published, fee is ₹250, and all 24 slots are available
 INSERT INTO public.events (
   id,
   title,
@@ -50,33 +49,17 @@ INSERT INTO public.events (
   registration_deadline = EXCLUDED.registration_deadline,
   status = 'published';
 
--- Ensure Event #1 remains marked as completed historical match
+-- Set Event #1 as completed historical session
 INSERT INTO public.events (
-  id,
-  title,
-  description,
-  event_date,
-  start_time,
-  end_time,
-  venue,
-  registration_fee,
-  max_participants,
-  registration_deadline,
-  status
+  id, title, description, event_date, start_time, end_time, venue,
+  registration_fee, max_participants, registration_deadline, status
 ) VALUES (
   '11111111-1111-1111-1111-111111111111',
   'Weekend Smash — Session #1',
   'Inaugural weekend evening session. 24 players gathered for 3 hours of organized doubles rotations and friendly rallies.',
-  '2026-11-15',
-  '17:30:00',
-  '20:30:00',
-  'Flymate Badminton Hub, Kakkanad, Kochi',
-  250.00,
-  24,
-  '2026-11-15 16:00:00+05:30',
-  'completed'
-) ON CONFLICT (id) DO UPDATE SET
-  status = 'completed';
+  '2026-11-15', '17:30:00', '20:30:00', 'Flymate Badminton Hub, Kakkanad, Kochi',
+  250.00, 24, '2026-11-15 16:00:00+05:30', 'completed'
+) ON CONFLICT (id) DO UPDATE SET status = 'completed';
 
 -- --------------------------------------------------------------------
 -- 3. SETUP PRODUCTION PAYMENT SETTINGS (UPI: psivaram17-1@oksbi)
@@ -101,7 +84,20 @@ INSERT INTO public.payment_settings (
   updated_at = NOW();
 
 -- --------------------------------------------------------------------
--- 4. CONFIGURE ROW LEVEL SECURITY (RLS) POLICIES FOR FULL APP ACCESS
+-- 4. ENSURE CONTACT INQUIRIES TABLE EXISTS
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.contact_inquiries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  whatsapp_or_phone TEXT NOT NULL,
+  email TEXT,
+  subject TEXT,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- --------------------------------------------------------------------
+-- 5. CONFIGURE ROW LEVEL SECURITY (RLS) POLICIES FOR PRODUCTION
 -- --------------------------------------------------------------------
 -- Grant schema and sequence usage
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
@@ -111,7 +107,7 @@ GRANT ALL ON TABLE public.payment_settings TO anon, authenticated;
 GRANT ALL ON TABLE public.contact_inquiries TO anon, authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 
--- Registrations RLS
+-- Registrations RLS (Full operational access for website and admin devices)
 ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can manage registrations" ON public.registrations;
 DROP POLICY IF EXISTS "Public can insert registrations" ON public.registrations;
@@ -158,13 +154,12 @@ CREATE POLICY "Public can manage contact inquiries" ON public.contact_inquiries
   WITH CHECK (true);
 
 -- --------------------------------------------------------------------
--- 5. REMOVE DUPLICATE PHONE RESTRICTION
+-- 6. REMOVE DUPLICATE PHONE RESTRICTION (Supports multi-ticket bookings)
 -- --------------------------------------------------------------------
--- Allows participants to register multiple tickets or teammates
 ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS unique_event_phone;
 
 -- --------------------------------------------------------------------
--- 6. ATOMIC REGISTRATION FUNCTION (SEQUENTIAL NS-001, NS-002...)
+-- 7. ATOMIC REGISTRATION FUNCTION (SEQUENTIAL TICKET IDs: NS-001, NS-002...)
 -- --------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.register_for_event(
   p_event_id UUID,
@@ -199,11 +194,7 @@ BEGIN
     );
   END IF;
 
-  -- Lock event row for atomic slot count
-  SELECT * INTO v_event
-  FROM public.events
-  WHERE id = p_event_id
-  FOR UPDATE;
+  SELECT * INTO v_event FROM public.events WHERE id = p_event_id FOR UPDATE;
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object('success', false, 'error', 'EVENT_NOT_FOUND', 'message', 'Event not found.');
@@ -235,37 +226,16 @@ BEGIN
     v_reg_number := 'NS-001';
   END IF;
 
-  -- Insert registration record
   INSERT INTO public.registrations (
-    registration_number,
-    event_id,
-    full_name,
-    email,
-    phone,
-    age,
-    gender,
-    skill_level,
-    playing_category,
-    emergency_contact,
-    payment_status,
-    attendance_status,
-    utr_reference,
-    payment_screenshot_path
+    registration_number, event_id, full_name, email, phone, age, gender,
+    skill_level, playing_category, emergency_contact, payment_status,
+    attendance_status, utr_reference, payment_screenshot_path
   ) VALUES (
-    v_reg_number,
-    p_event_id,
-    trim(p_full_name),
-    nullif(trim(p_email), ''),
-    v_clean_phone,
-    p_age,
-    p_gender,
-    p_skill_level,
+    v_reg_number, p_event_id, trim(p_full_name), nullif(trim(p_email), ''),
+    v_clean_phone, p_age, p_gender, p_skill_level,
     coalesce(nullif(trim(p_playing_category), ''), 'Open Doubles'),
-    nullif(trim(p_emergency_contact), ''),
-    'pending',
-    'registered',
-    nullif(trim(p_utr_reference), ''),
-    nullif(trim(p_payment_screenshot_path), '')
+    nullif(trim(p_emergency_contact), ''), 'pending', 'registered',
+    nullif(trim(p_utr_reference), ''), nullif(trim(p_payment_screenshot_path), '')
   ) RETURNING id INTO v_reg_id;
 
   RETURN jsonb_build_object(
@@ -279,7 +249,6 @@ BEGIN
 
 EXCEPTION
   WHEN unique_violation THEN
-    -- Fallback unique generator in case of concurrent slot allocation
     v_reg_number := 'NS-' || lpad((floor(random() * 899 + 100)::int)::text, 3, '0');
     INSERT INTO public.registrations (
       registration_number, event_id, full_name, email, phone, age, gender,
@@ -305,7 +274,7 @@ END;
 $$;
 
 -- --------------------------------------------------------------------
--- 7. SMART TICKET LOOKUP FUNCTION
+-- 8. SMART TICKET LOOKUP FUNCTION (Lookup by Phone or Ticket Number)
 -- --------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.lookup_registration(
   p_registration_number TEXT,
@@ -322,22 +291,10 @@ BEGIN
   v_clean_phone := regexp_replace(COALESCE(p_phone, ''), '[^0-9]', '', 'g');
 
   SELECT 
-    r.id,
-    r.registration_number,
-    r.full_name,
-    r.skill_level,
-    r.playing_category,
-    r.payment_status,
-    r.attendance_status,
-    r.utr_reference,
-    r.payment_screenshot_path,
-    r.created_at,
-    e.title as event_title,
-    e.event_date,
-    e.start_time,
-    e.end_time,
-    e.venue,
-    e.registration_fee
+    r.id, r.registration_number, r.full_name, r.skill_level, r.playing_category,
+    r.payment_status, r.attendance_status, r.utr_reference, r.payment_screenshot_path,
+    r.created_at, e.title as event_title, e.event_date, e.start_time, e.end_time,
+    e.venue, e.registration_fee
   INTO v_res
   FROM public.registrations r
   JOIN public.events e ON e.id = r.event_id
@@ -355,21 +312,15 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
-    RETURN jsonb_build_object(
-      'found', false,
-      'message', 'No matching registration found for this number and phone combination.'
-    );
+    RETURN jsonb_build_object('found', false, 'message', 'No matching registration found.');
   END IF;
 
-  RETURN jsonb_build_object(
-    'found', true,
-    'registration', row_to_json(v_res)
-  );
+  RETURN jsonb_build_object('found', true, 'registration', row_to_json(v_res));
 END;
 $$;
 
 -- --------------------------------------------------------------------
--- 8. REMAINING SLOTS FUNCTION
+-- 9. REMAINING SLOTS FUNCTION
 -- --------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_event_remaining_slots(p_event_id UUID)
 RETURNS INTEGER
@@ -380,43 +331,22 @@ DECLARE
   v_max INTEGER;
   v_booked INTEGER;
 BEGIN
-  SELECT max_participants INTO v_max 
-  FROM public.events 
-  WHERE id = p_event_id;
-
-  IF NOT FOUND THEN
-    RETURN 0;
-  END IF;
-
-  SELECT COUNT(*) INTO v_booked
-  FROM public.registrations
-  WHERE event_id = p_event_id 
-    AND payment_status != 'rejected';
-
+  SELECT max_participants INTO v_max FROM public.events WHERE id = p_event_id;
+  IF NOT FOUND THEN RETURN 0; END IF;
+  SELECT COUNT(*) INTO v_booked FROM public.registrations WHERE event_id = p_event_id AND payment_status != 'rejected';
   RETURN GREATEST(0, v_max - v_booked);
 END;
 $$;
 
--- Grant execution permissions
 GRANT EXECUTE ON FUNCTION public.register_for_event TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.lookup_registration TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_event_remaining_slots TO anon, authenticated;
 
 -- --------------------------------------------------------------------
--- 9. VERIFICATION QUERY (CONFIRM CLEAN PRODUCTION STATE)
+-- 10. VERIFY CLEAN PRODUCTION STATE
 -- --------------------------------------------------------------------
-SELECT 
-  'registrations' AS table_name, 
-  COUNT(*)::text AS count 
-FROM public.registrations
+SELECT 'registrations' AS item, COUNT(*)::text AS status FROM public.registrations
 UNION ALL
-SELECT 
-  'published_events', 
-  COUNT(*)::text 
-FROM public.events 
-WHERE status = 'published'
+SELECT 'published_events', COUNT(*)::text FROM public.events WHERE status = 'published'
 UNION ALL
-SELECT 
-  'payment_settings', 
-  upi_id 
-FROM public.payment_settings;
+SELECT 'payment_settings', upi_id FROM public.payment_settings;
