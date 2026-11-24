@@ -1830,10 +1830,16 @@ export const eventsService = {
   async updateRegistrationAttendance(regId: string, attendanceStatus: 'registered' | 'present' | 'absent'): Promise<boolean> {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('registrations')
-          .update({ attendance_status: attendanceStatus })
-          .eq('id', regId);
+          .update({ attendance_status: attendanceStatus });
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(regId);
+        if (isUuid) {
+          updateQuery = updateQuery.eq('id', regId);
+        } else {
+          updateQuery = updateQuery.eq('registration_number', regId);
+        }
+        const { error } = await updateQuery;
         if (error) console.warn('Supabase attendance update error', error);
       } catch (e) {
         console.warn(e);
@@ -2017,15 +2023,25 @@ export const eventsService = {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const updatePayload: any = {
+        let updateQuery = supabase.from('registrations').update({
           payment_status: paymentStatus,
-          registration_status: registrationStatus,
-          rejection_reason: paymentStatus === 'rejected' ? (rejectionReason || 'Payment details could not be verified by the organiser.') : null,
-        };
-        await supabase
-          .from('registrations')
-          .update(updatePayload)
-          .eq('id', regId);
+        });
+
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(regId);
+        if (isUuid) {
+          updateQuery = updateQuery.eq('id', regId);
+        } else if (targetReg?.registration_number) {
+          updateQuery = updateQuery.eq('registration_number', targetReg.registration_number);
+        } else {
+          updateQuery = updateQuery.eq('id', regId);
+        }
+
+        const { error: supaErr } = await updateQuery;
+        if (supaErr) {
+          console.warn('Supabase updateRegistrationPayment error:', supaErr);
+        } else {
+          console.log(`Payment status successfully updated to ${paymentStatus} for ${regId} in Supabase`);
+        }
       } catch (e) {
         console.warn('Supabase updateRegistrationPayment error', e);
       }
@@ -2091,6 +2107,11 @@ export const eventsService = {
       }
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('naadansmash_payment_updated'));
+      window.dispatchEvent(new CustomEvent('naadansmash_roster_updated'));
+    }
+
     return { success: true, emailResult };
   },
 
@@ -2101,7 +2122,14 @@ export const eventsService = {
   async deleteRegistration(regId: string, phone?: string): Promise<boolean> {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('registrations').delete().eq('id', regId);
+        let delQuery = supabase.from('registrations').delete();
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(regId);
+        if (isUuid) {
+          delQuery = delQuery.eq('id', regId);
+        } else {
+          delQuery = delQuery.eq('registration_number', regId);
+        }
+        const { error } = await delQuery;
         if (error) console.warn('Supabase delete registration error:', error);
       } catch (e) {
         console.warn('Supabase delete exception:', e);
