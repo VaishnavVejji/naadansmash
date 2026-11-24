@@ -19,11 +19,16 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 async function fetchCloudPaymentSettings(): Promise<any> {
   try {
-    const res = await fetch(`https://api.restful-api.dev/objects/${PAYMENT_STORE_ID}`);
+    const res = await fetch(`https://api.restful-api.dev/objects/${PAYMENT_STORE_ID}?t=${Date.now()}`, {
+      cache: 'no-store',
+    });
     if (res.ok) {
       const data = await res.json();
       if (data?.data?.upi_id) {

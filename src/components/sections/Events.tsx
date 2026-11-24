@@ -29,6 +29,16 @@ export const Events: React.FC<EventsProps> = ({
 
   useEffect(() => {
     loadEvents();
+    const handleEventUpdate = () => loadEvents();
+    window.addEventListener('naadansmash_event_updated', handleEventUpdate);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadEvents();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('naadansmash_event_updated', handleEventUpdate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   const loadEvents = async () => {
@@ -159,7 +169,9 @@ export const Events: React.FC<EventsProps> = ({
               /* PREMIUM EVENT-BOOKING PLATFORM CARD */
               <div className="max-w-4xl mx-auto">
                 {upcomingEvents.map((evt) => {
-                  const isRegistrationOpen = evt.status === 'published' && (evt.available_slots === undefined || evt.available_slots > 0);
+                  const isCompleted = evt.status === 'completed';
+                  const isClosed = evt.status === 'closed' || isCompleted || (evt.available_slots !== undefined && evt.available_slots <= 0);
+                  const isRegistrationOpen = evt.status === 'published' && !isClosed;
                   return (
                   <div
                     key={evt.id}
@@ -176,7 +188,11 @@ export const Events: React.FC<EventsProps> = ({
                           <span className={`h-2 w-2 rounded-full ${
                             isRegistrationOpen ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'
                           }`} />
-                          {isRegistrationOpen ? 'Registration Open' : 'Registration Closed'}
+                          {isRegistrationOpen
+                            ? 'Registration Open'
+                            : isCompleted
+                            ? 'Session Completed & Closed'
+                            : 'Registration Closed'}
                         </span>
                         <span className="text-xs font-mono text-brand-muted uppercase">
                           Kochi Chapter
@@ -281,7 +297,7 @@ export const Events: React.FC<EventsProps> = ({
                           ) : (
                             <span className="text-rose-700 flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-rose-600" />
-                              Registration Closed
+                              {isCompleted ? 'Session Completed' : 'Registration Closed'}
                             </span>
                           )}
                         </div>
@@ -293,6 +309,8 @@ export const Events: React.FC<EventsProps> = ({
                       <div className="text-[11px] text-brand-muted text-center sm:text-left">
                         {isRegistrationOpen
                           ? '* Pay via UPI or Cash directly at the venue. Atomic database protection prevents duplicate bookings.'
+                          : isCompleted
+                          ? '* This match session has concluded and registrations are closed. Check back soon for the next game schedule.'
                           : '* Registrations for this session are currently closed. Join alerts below to get notified for the next game.'}
                       </div>
 
@@ -310,7 +328,7 @@ export const Events: React.FC<EventsProps> = ({
                             disabled
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-black/10 text-brand-charcoal/50 font-heading font-semibold text-xs uppercase tracking-widest cursor-not-allowed border border-black/[0.08]"
                           >
-                            <span>REGISTRATION CLOSED</span>
+                            <span>{isCompleted ? 'SESSION COMPLETED' : 'REGISTRATION CLOSED'}</span>
                           </button>
                           <button
                             onClick={onOpenAlertModal}

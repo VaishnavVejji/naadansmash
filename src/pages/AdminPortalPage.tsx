@@ -226,6 +226,20 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
       });
       setPassword('');
       setAuthError('');
+
+      // Refresh events from cloud immediately upon login
+      try {
+        eventsService.getEvents().then((freshEvents) => {
+          if (freshEvents && freshEvents.length > 0) {
+            setAllEvents(freshEvents);
+            const active = freshEvents.find((e) => e.status === 'published') || freshEvents[0];
+            if (active) {
+              setSelectedEventId(active.id);
+              populateEventForm(active);
+            }
+          }
+        });
+      } catch {}
     } else {
       setAuthError(res.message);
     }
@@ -420,32 +434,40 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   };
 
   const handleCompleteAndCloseEvent = async () => {
-    if (!selectedEventId) return;
-    const currentEvent = allEvents.find((e) => e.id === selectedEventId);
-    if (!currentEvent) return;
+    const targetId = selectedEventId || allEvents[0]?.id;
+    if (!targetId) {
+      alert('No active event found to close.');
+      return;
+    }
+    const currentEvent = allEvents.find((e) => e.id === targetId) || allEvents[0];
 
     const confirmClose = window.confirm(
-      `Complete & Close Event: "${currentEvent.title}"?\n\n• The session will be marked as 'completed' (closing new registrations).\n• All player records, attendance, tickets, and payment history will remain safely stored in the database.\n• Heavy screenshot photos will be automatically cleaned up to keep the database lean.\n\nProceed?`
+      `Complete & Close Event: "${currentEvent?.title || 'Current Event'}"?\n\n• The session will be marked as 'completed' (closing new registrations across the site).\n• All player records, attendance, tickets, and payment history will remain safely stored in the database.\n• Heavy screenshot photos will be automatically cleaned up to keep the database lean.\n\nProceed?`
     );
     if (!confirmClose) return;
 
     try {
-      const res = await eventsService.closeAndCompleteEvent(selectedEventId, true);
+      const res = await eventsService.closeAndCompleteEvent(targetId, true);
       if (res.success) {
+        setStatus('completed');
         setAllEvents((prev) =>
-          prev.map((e) => (e.id === selectedEventId ? { ...e, status: 'completed' } : e))
+          prev.map((e) => (e.id === targetId ? { ...e, status: 'completed' } : e))
         );
         setRegistrations((prev) =>
           prev.map((r) => ({ ...r, payment_screenshot_path: null }))
         );
         setFeedbackBanner({
-          message: `✓ Event completed and closed! ${res.message}`,
+          message: `✓ Event completed and closed! ${res.message || 'Registrations are now closed.'}`,
           type: 'success',
         });
         setTimeout(() => setFeedbackBanner(null), 5000);
+        window.dispatchEvent(new CustomEvent('naadansmash_event_updated'));
         if (onEventUpdated) onEventUpdated();
+      } else {
+        alert(res.message || 'Failed to complete and close event.');
       }
-    } catch {
+    } catch (err) {
+      console.error('Error closing event:', err);
       alert('Failed to complete and close event.');
     }
   };
@@ -455,54 +477,72 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     setSavingEvent(true);
     setSaveSuccess(false);
 
-    if (isCreatingNewEvent) {
-      const created = await eventsService.createEvent({
-        title,
-        description,
-        event_date: eventDate,
-        start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-        end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-        venue,
-        registration_fee: Number(fee),
-        max_participants: Number(maxParticipants),
-        status: status as any,
+    try {
+      if (isCreatingNewEvent) {
+        const created = await eventsService.createEvent({
+          title,
+          description,
+          event_date: eventDate,
+          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
+          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
+          venue,
+          registration_fee: Number(fee),
+          max_participants: Number(maxParticipants),
+          status: status as any,
+        });
+
+        setAllEvents((prev) => [...prev, created]);
+        setSelectedEventId(created.id);
+        setIsCreatingNewEvent(false);
+      } else {
+        const targetId = selectedEventId || allEvents[0]?.id || '22222222-2222-2222-2222-222222222222';
+        const currentEvent = allEvents.find((ev) => ev.id === targetId) || allEvents[0] || {} as DatabaseEvent;
+
+        const updated: DatabaseEvent = {
+          ...currentEvent,
+          id: targetId,
+          title,
+          event_date: eventDate,
+          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
+          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
+          venue,
+          registration_fee: Number(fee),
+          max_participants: Number(maxParticipants),
+          status: status as any,
+          description,
+        };
+
+        await eventsService.updateEventManually(updated);
+        setAllEvents((prev) => {
+          const exists = prev.some((ev) => ev.id === updated.id);
+          return exists ? prev.map((ev) => (ev.id === updated.id ? updated : ev)) : [updated, ...prev];
+        });
+        setSelectedEventId(updated.id);
+      }
+
+      if (upiId.trim()) {
+        await eventsService.updatePaymentSettings({
+          upi_id: upiId.trim(),
+          account_display_name: accountName.trim() || 'NAADANSMASH Kochi Sports Club',
+        });
+      }
+
+      setSaveSuccess(true);
+      setFeedbackBanner({
+        message: '✓ Match session schedule & settings successfully synced to cloud database!',
+        type: 'success',
       });
-
-      setAllEvents((prev) => [...prev, created]);
-      setSelectedEventId(created.id);
-      setIsCreatingNewEvent(false);
-    } else {
-      const currentEvent = allEvents.find((ev) => ev.id === selectedEventId);
-      if (!currentEvent) return;
-
-      const updated: DatabaseEvent = {
-        ...currentEvent,
-        title,
-        event_date: eventDate,
-        start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
-        end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
-        venue,
-        registration_fee: Number(fee),
-        max_participants: Number(maxParticipants),
-        status: status as any,
-        description,
-      };
-
-      await eventsService.updateEventManually(updated);
-      setAllEvents((prev) => prev.map((ev) => (ev.id === updated.id ? updated : ev)));
+      setTimeout(() => setFeedbackBanner(null), 4000);
+      window.dispatchEvent(new CustomEvent('naadansmash_event_updated'));
+      window.dispatchEvent(new CustomEvent('naadansmash_payment_updated'));
+      if (onEventUpdated) onEventUpdated();
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err) {
+      console.error('Error saving event schedule:', err);
+      alert('Failed to save session changes to cloud database.');
+    } finally {
+      setSavingEvent(false);
     }
-
-    if (upiId.trim()) {
-      await eventsService.updatePaymentSettings({
-        upi_id: upiId.trim(),
-        account_display_name: accountName.trim() || 'NAADANSMASH Kochi Sports Club',
-      });
-    }
-
-    setSavingEvent(false);
-    setSaveSuccess(true);
-    if (onEventUpdated) onEventUpdated();
-    setTimeout(() => setSaveSuccess(false), 2500);
   };
 
   const handleExportCSV = () => {

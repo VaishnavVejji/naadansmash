@@ -79,6 +79,11 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
   if (!isOpen || !event) return null;
 
+  const isClosed =
+    event.status === 'closed' ||
+    event.status === 'completed' ||
+    (event.available_slots !== undefined && event.available_slots <= 0);
+
   const handleScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -123,7 +128,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       return;
     }
 
-    if (event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0)) {
+    if (isClosed) {
       setErrorMsg('Registrations are currently closed for this session. Nobody else can register.');
       setLoading(false);
       return;
@@ -231,7 +236,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     if (e) e.preventDefault();
     setErrorMsg('');
 
-    if (event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0)) {
+    if (isClosed) {
       setErrorMsg('Registrations are currently closed for this session.');
       return;
     }
@@ -436,7 +441,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 </div>
               </div>
 
-              {(event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0)) && (
+              {isClosed && (
                 <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs mb-4 flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0" />
                   <span className="font-semibold">
@@ -605,7 +610,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   </div>
 
                   <div className="pt-3">
-                    {event.status === 'closed' || (event.available_slots !== undefined && event.available_slots <= 0) ? (
+                    {isClosed ? (
                       <button
                         type="button"
                         disabled

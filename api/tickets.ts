@@ -140,6 +140,9 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 function formatTicket(t: any): any {
@@ -154,6 +157,53 @@ function formatTicket(t: any): any {
     venue: t.venue || 'Cochin Sports Arena, Edappally, Kochi',
     registration_fee: t.registration_fee || 250,
   };
+}
+
+async function fetchCloudTickets(): Promise<any[]> {
+  try {
+    const res = await fetch(`https://api.restful-api.dev/objects/${TICKETS_STORE_ID}?t=${Date.now()}`, {
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.data?.tickets && Array.isArray(data.data.tickets) && data.data.tickets.length > 0) {
+        memoryStore.set('all_registrations', data.data.tickets);
+        return data.data.tickets;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch cloud tickets:', e);
+  }
+  return memoryStore.get('all_registrations') || DEFAULT_SEED_TICKETS;
+}
+
+async function saveCloudTickets(tickets: any[]): Promise<boolean> {
+  memoryStore.set('all_registrations', tickets);
+  for (const t of tickets) {
+    const phone = (t.phone || '').replace(/\D/g, '').slice(-10);
+    const reg = (t.registration_number || '').toUpperCase();
+    if (reg) memoryStore.set(`reg_${reg}`, t);
+    if (phone) {
+      const pList = memoryStore.get(`phone_${phone}`) || [];
+      const filtered = pList.filter((x: any) => (x.registration_number || '').toUpperCase() !== reg);
+      filtered.unshift(t);
+      memoryStore.set(`phone_${phone}`, filtered);
+    }
+  }
+  try {
+    const res = await fetch(`https://api.restful-api.dev/objects/${TICKETS_STORE_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'naadansmash_cloud_tickets_v1',
+        data: { tickets },
+      }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Could not save cloud tickets:', e);
+    return false;
+  }
 }
 
 export default async function handler(req: Request) {
@@ -171,25 +221,15 @@ export default async function handler(req: Request) {
     // -------------------------------------------------------------
     if (req.method === 'GET') {
       const q = url.searchParams.get('q')?.trim() || '';
+      const cloudTickets = await fetchCloudTickets();
 
       if (!q) {
         // Return all registered tickets
-        let allRegs: any[] = [];
-        if (supabase) {
-          try {
-            const { data } = await supabase.from('registrations').select('*').order('created_at', { ascending: false });
-            if (data && data.length > 0) allRegs = data;
-          } catch {}
-        }
-        if (allRegs.length === 0) {
-          allRegs = memoryStore.get('all_registrations') || [];
-        }
-
         const mergedMap = new Map<string, any>();
         for (const seed of DEFAULT_SEED_TICKETS) {
           mergedMap.set(seed.registration_number.toUpperCase(), formatTicket(seed));
         }
-        for (const item of allRegs) {
+        for (const item of cloudTickets) {
           if (item && item.registration_number) {
             mergedMap.set(item.registration_number.toUpperCase(), formatTicket(item));
           }
@@ -209,8 +249,18 @@ export default async function handler(req: Request) {
 
       const matchedTicketsMap = new Map<string, any>();
 
-      // 1. Check Supabase
-      if (supabase) {
+      // 1. Check Cloud Tickets
+      for (const item of cloudTickets) {
+        const itemPhone = (item.phone || '').replace(/\D/g, '').slice(-10);
+        const itemReg = (item.registration_number || '').toUpperCase();
+        if ((cleanPhone && (itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone))) ||
+            itemReg === cleanReg) {
+          matchedTicketsMap.set(itemReg, formatTicket(item));
+        }
+      }
+
+      // 2. Check Supabase
+      if (matchedTicketsMap.size === 0 && supabase) {
         try {
           if (cleanPhone) {
             const { data } = await supabase.from('registrations').select('*').ilike('phone', `%${cleanPhone}%`);
@@ -230,38 +280,6 @@ export default async function handler(req: Request) {
           }
         } catch (err) {
           console.warn('Supabase GET tickets error:', err);
-        }
-      }
-
-      // 2. Check in-memory store
-      if (matchedTicketsMap.size === 0) {
-        if (cleanPhone) {
-          const byPhone = memoryStore.get(`phone_${cleanPhone}`);
-          if (byPhone) {
-            const list = Array.isArray(byPhone) ? byPhone : [byPhone];
-            for (const item of list) {
-              if (item?.registration_number) {
-                matchedTicketsMap.set(item.registration_number.toUpperCase(), formatTicket(item));
-              }
-            }
-          }
-        }
-        if (matchedTicketsMap.size === 0) {
-          const byReg = memoryStore.get(`reg_${cleanReg}`);
-          if (byReg && byReg.registration_number) {
-            matchedTicketsMap.set(byReg.registration_number.toUpperCase(), formatTicket(byReg));
-          }
-        }
-        if (matchedTicketsMap.size === 0) {
-          const allRegs: any[] = memoryStore.get('all_registrations') || [];
-          for (const item of allRegs) {
-            const itemPhone = (item.phone || '').replace(/\D/g, '').slice(-10);
-            const itemReg = (item.registration_number || '').toUpperCase();
-            if ((cleanPhone && (itemPhone === cleanPhone || itemPhone.endsWith(cleanPhone) || cleanPhone.endsWith(itemPhone))) ||
-                itemReg === cleanReg) {
-              matchedTicketsMap.set(itemReg, formatTicket(item));
-            }
-          }
         }
       }
 
@@ -314,7 +332,15 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       });
 
-      // 1. Save in Supabase
+      // 1. Save in Cloud store
+      const currentList = await fetchCloudTickets();
+      const filtered = currentList.filter(
+        (t: any) => (t.registration_number || '').toUpperCase() !== regNumber
+      );
+      filtered.unshift(ticketRecord);
+      await saveCloudTickets(filtered);
+
+      // 2. Save in Supabase
       if (supabase) {
         try {
           await supabase.from('registrations').upsert(ticketRecord);
@@ -322,22 +348,6 @@ export default async function handler(req: Request) {
           console.warn('Supabase upsert error:', e);
         }
       }
-
-      // 2. Save in memory store
-      const memPhoneTickets = memoryStore.get(`phone_${phone}`) || [];
-      const filteredMemPhone = memPhoneTickets.filter(
-        (t: any) => (t.registration_number || '').toUpperCase() !== regNumber
-      );
-      filteredMemPhone.unshift(ticketRecord);
-      memoryStore.set(`phone_${phone}`, filteredMemPhone);
-      memoryStore.set(`reg_${regNumber}`, ticketRecord);
-
-      const memAll = memoryStore.get('all_registrations') || [];
-      const filteredMemAll = memAll.filter(
-        (t: any) => (t.registration_number || '').toUpperCase() !== regNumber
-      );
-      filteredMemAll.unshift(ticketRecord);
-      memoryStore.set('all_registrations', filteredMemAll);
 
       return new Response(
         JSON.stringify({ success: true, message: 'Ticket registered in cloud sync store.', ticket: ticketRecord }),
@@ -360,7 +370,7 @@ export default async function handler(req: Request) {
         );
       }
 
-      let allRegs: any[] = memoryStore.get('all_registrations') || [];
+      let allRegs: any[] = await fetchCloudTickets();
       const idx = allRegs.findIndex(
         (r: any) =>
           (regNumber && (r.registration_number || '').toUpperCase() === regNumber) ||
@@ -372,22 +382,11 @@ export default async function handler(req: Request) {
         target = { ...allRegs[idx], ...body, updated_at: new Date().toISOString() };
         allRegs[idx] = target;
 
-        const phone = (target.phone || '').replace(/\D/g, '').slice(-10);
-        const cleanReg = (target.registration_number || '').toUpperCase();
-
-        memoryStore.set('all_registrations', allRegs);
-        if (cleanReg) memoryStore.set(`reg_${cleanReg}`, target);
-        if (phone) {
-          const phoneList: any[] = memoryStore.get(`phone_${phone}`) || [];
-          const pIdx = phoneList.findIndex((p: any) => (p.registration_number || '').toUpperCase() === cleanReg);
-          if (pIdx >= 0) phoneList[pIdx] = target;
-          else phoneList.unshift(target);
-          memoryStore.set(`phone_${phone}`, phoneList);
-        }
+        await saveCloudTickets(allRegs);
 
         if (supabase) {
           try {
-            await supabase.from('registrations').update(target).eq('registration_number', cleanReg);
+            await supabase.from('registrations').update(target).eq('registration_number', target.registration_number);
           } catch {}
         }
 
@@ -409,11 +408,10 @@ export default async function handler(req: Request) {
     if (req.method === 'DELETE') {
       const regId = url.searchParams.get('id');
       const regNumber = url.searchParams.get('reg')?.toUpperCase();
-      const phone = url.searchParams.get('phone')?.replace(/\D/g, '').slice(-10);
       const eventId = url.searchParams.get('eventId');
       const purgeScreenshots = url.searchParams.get('purgeScreenshots') === 'true';
 
-      let allRegs: any[] = memoryStore.get('all_registrations') || [];
+      let allRegs: any[] = await fetchCloudTickets();
 
       if (purgeScreenshots && eventId) {
         allRegs = allRegs.map((r: any) => (r.event_id === eventId ? { ...r, payment_screenshot_path: null } : r));
@@ -427,7 +425,7 @@ export default async function handler(req: Request) {
         );
       }
 
-      memoryStore.set('all_registrations', allRegs);
+      await saveCloudTickets(allRegs);
 
       if (supabase) {
         try {

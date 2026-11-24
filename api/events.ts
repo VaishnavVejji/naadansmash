@@ -43,11 +43,16 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 async function fetchCloudEvents(): Promise<any[]> {
   try {
-    const res = await fetch(`https://api.restful-api.dev/objects/${EVENTS_STORE_ID}`);
+    const res = await fetch(`https://api.restful-api.dev/objects/${EVENTS_STORE_ID}?t=${Date.now()}`, {
+      cache: 'no-store',
+    });
     if (res.ok) {
       const data = await res.json();
       if (data?.data?.events && Array.isArray(data.data.events) && data.data.events.length > 0) {
@@ -161,17 +166,27 @@ export default async function handler(req: Request) {
         updatedEvent = {
           ...currentEvents[idx],
           ...eventToUpdate,
+          id: currentEvents[idx].id,
           updated_at: new Date().toISOString(),
         };
         newList = [...currentEvents];
         newList[idx] = updatedEvent;
+      } else if (currentEvents.length > 0) {
+        updatedEvent = {
+          ...currentEvents[0],
+          ...eventToUpdate,
+          id: currentEvents[0].id,
+          updated_at: new Date().toISOString(),
+        };
+        newList = [...currentEvents];
+        newList[0] = updatedEvent;
       } else {
         updatedEvent = {
           ...eventToUpdate,
-          id: eventId,
+          id: eventId || '22222222-2222-2222-2222-222222222222',
           updated_at: new Date().toISOString(),
         };
-        newList = [updatedEvent, ...currentEvents];
+        newList = [updatedEvent];
       }
 
       await saveCloudEvents(newList);

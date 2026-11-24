@@ -88,13 +88,25 @@ export const App: React.FC = () => {
   // Direct Registration & Ticket Handlers
   const handleOpenRegistration = async (event?: DatabaseEvent) => {
     if (event) {
+      if (event.status === 'closed' || event.status === 'completed') {
+        const eventsElement = document.getElementById('events');
+        if (eventsElement) eventsElement.scrollIntoView({ behavior: 'smooth' });
+        setIsAlertOpen(true);
+        return;
+      }
       setSelectedEvent(event);
       setIsRegisterOpen(true);
     } else {
       try {
         const events = await eventsService.getEvents();
-        const active = events.find((e: DatabaseEvent) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.event_date >= '2026-11-22')) || events[0];
+        const active = events.find((e: DatabaseEvent) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.status === 'completed' || e.event_date >= '2026-11-22')) || events[0];
         if (active) {
+          if (active.status === 'closed' || active.status === 'completed') {
+            const eventsElement = document.getElementById('events');
+            if (eventsElement) eventsElement.scrollIntoView({ behavior: 'smooth' });
+            setIsAlertOpen(true);
+            return;
+          }
           setSelectedEvent(active);
           setIsRegisterOpen(true);
           return;

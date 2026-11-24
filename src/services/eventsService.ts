@@ -352,7 +352,7 @@ export const eventsService = {
   async getEvents(): Promise<DatabaseEvent[]> {
     // 1. Primary: Fetch from cloud sync store (/api/events)
     try {
-      const res = await fetch('/api/events');
+      const res = await fetch(`/api/events?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data?.success && Array.isArray(data.events) && data.events.length > 0) {
@@ -1336,11 +1336,17 @@ export const eventsService = {
   async updateEventManually(updatedEvent: DatabaseEvent): Promise<boolean> {
     // 1. Sync to cloud store (/api/events)
     try {
-      fetch('/api/events', {
+      const res = await fetch('/api/events', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: updatedEvent }),
-      }).catch((e) => console.warn('Cloud events update background error:', e));
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.event) {
+          updatedEvent = { ...updatedEvent, ...data.event };
+        }
+      }
     } catch (e) {
       console.warn('Cloud events update failed:', e);
     }
@@ -1389,7 +1395,7 @@ export const eventsService = {
    */
   async createEvent(newEvent: Omit<DatabaseEvent, 'id' | 'created_at'> & { created_at?: string }): Promise<DatabaseEvent> {
     const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `event-${Date.now()}`;
-    const event: DatabaseEvent = {
+    let event: DatabaseEvent = {
       ...newEvent,
       id,
       created_at: newEvent.created_at || new Date().toISOString(),
@@ -1398,11 +1404,17 @@ export const eventsService = {
 
     // 1. Sync to cloud store (/api/events)
     try {
-      fetch('/api/events', {
+      const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event }),
-      }).catch((e) => console.warn('Cloud events create background error:', e));
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.event) {
+          event = { ...event, ...data.event };
+        }
+      }
     } catch (e) {
       console.warn('Cloud events create failed:', e);
     }
@@ -1800,6 +1812,24 @@ export const eventsService = {
    * Fetches all registered players for attendance and payment verification.
    */
   async getEventRegistrations(eventId?: string): Promise<any[]> {
+    // 1. Primary: Fetch from universal cloud store (/api/tickets)
+    try {
+      const queryParam = eventId ? `?eventId=${encodeURIComponent(eventId)}&t=${Date.now()}` : `?t=${Date.now()}`;
+      const res = await fetch(`/api/tickets${queryParam}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.tickets || data.registrations;
+        if (Array.isArray(list) && list.length > 0) {
+          return list.map((r: any) => ({
+            ...r,
+            registration_number: formatDisplayTicketNumber(r.registration_number),
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud tickets fetch error:', e);
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         let query = supabase.from('registrations').select('*').order('created_at', { ascending: false });
@@ -2259,12 +2289,14 @@ export const eventsService = {
 
     // Sync event status to cloud store (/api/events)
     try {
-      fetch('/api/events', {
+      await fetch('/api/events', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: eventId, status: 'completed' }),
-      }).catch(() => {});
-    } catch {}
+      });
+    } catch (e) {
+      console.warn('Cloud event close failed:', e);
+    }
 
     try {
       const events = getStoredEvents();
