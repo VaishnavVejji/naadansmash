@@ -520,14 +520,17 @@ export const eventsService = {
       ? 'Your payment details have been submitted for verification.'
       : 'Your registration has been received.';
 
-    // 1. Try Supabase RPC Transaction
+    // Always sanitize phone to 10 digits before any Supabase call
+    const cleanPhoneForRPC = payload.phone.replace(/[^0-9]/g, '').slice(-10);
+
+    // 1. Try Supabase RPC Transaction (PRIMARY - atomic, cross-device)
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.rpc('register_for_event', {
           p_event_id: payload.eventId,
           p_full_name: payload.fullName,
           p_email: payload.email || null,
-          p_phone: payload.phone,
+          p_phone: cleanPhoneForRPC,
           p_age: payload.age || null,
           p_gender: payload.gender || null,
           p_skill_level: payload.skillLevel,
@@ -541,7 +544,16 @@ export const eventsService = {
           console.warn('Supabase RPC register_for_event error, executing direct insert fallback:', error);
         } else if (data && typeof data === 'object') {
           if (!data.success) {
-            console.warn('Supabase RPC returned error status, attempting direct insert fallback:', data);
+            console.warn('Supabase RPC returned business error status:', data);
+            if (data.error === 'DUPLICATE_REGISTRATION' || data.message?.toLowerCase().includes('already registered')) {
+              return { success: false, message: data.message || 'This phone number is already registered for this session.' };
+            }
+            if (data.error === 'CAPACITY_REACHED' || data.message?.toLowerCase().includes('capacity')) {
+              return { success: false, message: data.message || 'This event has reached full capacity.' };
+            }
+            if (data.error === 'REGISTRATION_CLOSED' || data.message?.toLowerCase().includes('closed')) {
+              return { success: false, message: data.message || 'Registrations are closed for this session.' };
+            }
           } else {
             const displayRegNumber = formatDisplayTicketNumber(data.registration_number);
 
@@ -551,7 +563,7 @@ export const eventsService = {
             event_id: payload.eventId,
             full_name: payload.fullName,
             email: payload.email,
-            phone: payload.phone,
+            phone: cleanPhoneForRPC,
             age: payload.age,
             gender: payload.gender,
             skill_level: payload.skillLevel,
@@ -560,7 +572,6 @@ export const eventsService = {
             payment_screenshot_path: payload.paymentScreenshotPath || null,
             payment_status: 'pending',
             attendance_status: 'registered',
-            registration_status: registrationStatus,
             created_at: new Date().toISOString(),
           };
 
@@ -604,7 +615,11 @@ export const eventsService = {
           }
 
           // Auto-sync ticket to cross-device cloud store
-          await this.recordPlayerTicket(displayRegNumber, payload.phone, payload.eventId, newPlayerRecord);
+          await this.recordPlayerTicket(displayRegNumber, cleanPhoneForRPC, payload.eventId, newPlayerRecord);
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('naadansmash_roster_updated'));
+          }
 
           return {
             success: true,
@@ -631,7 +646,7 @@ export const eventsService = {
       return { success: false, message: 'Event not found.' };
     }
 
-    const cleanPhone = payload.phone.replace(/[^0-9]/g, '');
+    const cleanPhone = payload.phone.replace(/[^0-9]/g, '').slice(-10);
     if (!payload.fullName || !payload.fullName.trim() || cleanPhone.length < 10) {
       return { success: false, message: 'Please enter your full name and a valid 10-digit WhatsApp phone number.' };
     }
@@ -677,20 +692,8 @@ export const eventsService = {
       emergency_contact: payload.emergencyContact,
       payment_status: 'pending',
       attendance_status: 'registered',
-      registration_status: registrationStatus,
       utr_reference: payload.utrReference,
       payment_screenshot_path: payload.paymentScreenshotPath || null,
-      payment_audit_history: [
-        {
-          action: hasPaymentSubmitted ? 'utr_submitted' : 'registered',
-          timestamp: new Date().toISOString(),
-          actor: 'participant',
-          note: hasPaymentSubmitted
-            ? `Initial registration with UTR: ${payload.utrReference || 'Receipt screenshot'}`
-            : 'Initial registration received',
-          newStatus: registrationStatus,
-        },
-      ],
       created_at: new Date().toISOString(),
     };
 
@@ -744,12 +747,15 @@ export const eventsService = {
           emergency_contact: payload.emergencyContact || null,
           payment_status: 'pending',
           attendance_status: 'registered',
-          registration_status: registrationStatus,
           utr_reference: payload.utrReference || null,
           payment_screenshot_path: payload.paymentScreenshotPath || null,
           created_at: new Date().toISOString(),
         });
-        if (supaErr) console.warn('Supabase direct insert error:', supaErr);
+        if (supaErr) {
+          console.warn('Supabase direct insert error:', supaErr.code, supaErr.message);
+        } else {
+          console.log('Direct insert succeeded for', regNumber);
+        }
       } catch (e) {
         console.warn('Supabase direct insert exception:', e);
       }

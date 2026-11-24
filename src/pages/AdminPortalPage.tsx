@@ -184,6 +184,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
         if (activeEvent) {
           setSelectedEventId(activeEvent.id);
           populateEventForm(activeEvent);
+          loadRoster(activeEvent.id, false);
         }
       } catch (err) {
         console.error('Failed to load events:', err);
@@ -210,9 +211,10 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     try {
       // 1. Refresh events from cloud store
       const list = await eventsService.getEvents();
+      let currentTargetId = selectedEventId;
       if (list && list.length > 0) {
         setAllEvents(list);
-        const currentTargetId = selectedEventId || list.find((e) => e.status === 'published')?.id || list[0].id;
+        currentTargetId = selectedEventId || list.find((e) => e.status === 'published')?.id || list[0].id;
         const targetEv = list.find((e) => e.id === currentTargetId) || list[0];
 
         if (targetEv) {
@@ -248,7 +250,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
       } catch {}
 
       // 3. Refresh registrations roster
-      const targetId = selectedEventId || list?.[0]?.id;
+      const targetId = currentTargetId || selectedEventId;
       if (targetId) {
         await loadRoster(targetId, isBackground);
       }
