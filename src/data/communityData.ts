@@ -20,7 +20,24 @@ export const BRAND_CONFIG = {
   }
 };
 
-export const TEAM_MEMBERS = [
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  badge: string;
+  badgeType: 'organizer' | 'media';
+  bio: string;
+  photo: string;
+  isPlaceholder?: boolean;
+  placeholderNote?: string;
+  action: {
+    type: 'whatsapp' | 'instagram' | 'reserved';
+    label: string;
+    href?: string;
+  };
+}
+
+export const TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'organizer-1',
     name: 'SIVARAM P BABU',
@@ -38,17 +55,17 @@ export const TEAM_MEMBERS = [
   },
   {
     id: 'organizer-2',
-    name: 'Co-Organizer',
+    name: 'ABHINAV',
     role: 'Co-Founder & Operations Lead',
-    badge: 'Organizer 02',
+    badge: 'Co-Organizer',
     badgeType: 'organizer' as const,
-    bio: 'Oversees court operations, player hospitality, welcoming newcomers, and logistics. Details and profile photo will be updated shortly.',
-    photo: '/images/gallery/team-huddle.jpg',
-    isPlaceholder: true,
-    placeholderNote: 'Organizer 2 — Details arriving soon',
+    bio: 'Co-founder and organizer of NAADANSMASH. Abhinav leads on-court operations, player hospitality, warmups, and match coordination to ensure every session runs smoothly.',
+    photo: '/images/organizer2.jpeg',
+    isPlaceholder: false,
     action: {
-      type: 'reserved' as const,
-      label: 'Space Reserved',
+      type: 'whatsapp' as const,
+      label: 'Chat on WhatsApp',
+      href: `https://wa.me/${BRAND_CONFIG.contacts.whatsapp}?text=Hi%20Abhinav!%20I'd%20love%20to%20connect%20about%20NAADANSMASH%20sessions.`,
     }
   },
   {
@@ -83,13 +100,12 @@ export const ORGANIZERS_DATA = [
   },
   {
     id: 'organizer-2',
-    name: 'Co-Organizer',
+    name: 'ABHINAV',
     role: 'Co-Founder & Operations Lead',
-    badge: 'Organizer 02',
-    bio: 'Oversees court operations, player hospitality, welcoming newcomers, and logistics. Details and profile photo will be updated shortly.',
-    photo: '/images/gallery/team-huddle.jpg',
-    isPlaceholder: true,
-    placeholderNote: 'Organizer 2 — Details arriving soon',
+    badge: 'Co-Organizer',
+    bio: 'Co-founder and organizer of NAADANSMASH. Abhinav leads on-court operations, player hospitality, warmups, and match coordination to ensure every session runs smoothly.',
+    photo: '/images/organizer2.jpeg',
+    isPlaceholder: false,
     social: {
       whatsapp: '918304883872',
     }
