@@ -22,118 +22,11 @@ function getSupabase() {
 // Universal seed registrations accessible across all devices
 const TICKETS_STORE_ID = 'ff808181a09d98f701a2098501bc2a23';
 
-const DEFAULT_SEED_TICKETS: any[] = [
-  {
-    id: 'reg-demo-001',
-    registration_number: 'NS-001',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Test Verification Player',
-    email: 'player.verify@naadansmash.com',
-    phone: '9998887776',
-    skill_level: 'Intermediate',
-    playing_category: 'Open Doubles',
-    utr_reference: 'TEST12345678',
-    payment_status: 'pending',
-    registration_status: 'payment_submitted',
-    attendance_status: 'registered',
-    event_title: 'Sunday Evening Match Session - Smash Arena',
-    event_date: '2026-11-29',
-    start_time: '17:30:00',
-    end_time: '20:30:00',
-    venue: 'Cochin Sports Arena, Edappally, Kochi',
-    registration_fee: 250,
-    created_at: '2026-11-22T10:45:00+05:30',
-  },
-  {
-    id: 'reg-demo-002',
-    registration_number: 'NS-002',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Rahul Varma',
-    email: 'rahul.varma@example.com',
-    phone: '9847123456',
-    skill_level: 'Advanced',
-    playing_category: 'Open Doubles',
-    utr_reference: 'UPI9847123456',
-    payment_status: 'verified',
-    registration_status: 'confirmed',
-    attendance_status: 'present',
-    event_title: 'Sunday Evening Match Session - Smash Arena',
-    event_date: '2026-11-29',
-    start_time: '17:30:00',
-    end_time: '20:30:00',
-    venue: 'Cochin Sports Arena, Edappally, Kochi',
-    registration_fee: 250,
-    created_at: '2026-11-22T09:30:00+05:30',
-  },
-  {
-    id: 'reg-demo-003',
-    registration_number: 'NS-003',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Anjali Menon',
-    email: 'anjali.menon@example.com',
-    phone: '9447654321',
-    skill_level: 'Beginner',
-    playing_category: 'Open Doubles',
-    payment_status: 'pending',
-    registration_status: 'received',
-    attendance_status: 'registered',
-    event_title: 'Sunday Evening Match Session - Smash Arena',
-    event_date: '2026-11-29',
-    start_time: '17:30:00',
-    end_time: '20:30:00',
-    venue: 'Cochin Sports Arena, Edappally, Kochi',
-    registration_fee: 250,
-    created_at: '2026-11-22T08:15:00+05:30',
-  },
-  {
-    id: 'reg-demo-004',
-    registration_number: 'NS-004',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Kiran Thomas',
-    email: 'kiran.thomas@example.com',
-    phone: '9846112233',
-    skill_level: 'Intermediate',
-    playing_category: 'Open Doubles',
-    utr_reference: 'INVALIDUTR123',
-    payment_status: 'rejected',
-    registration_status: 'rejected',
-    rejection_reason: '12-digit UTR reference was not found in bank credits.',
-    attendance_status: 'registered',
-    event_title: 'Sunday Evening Match Session - Smash Arena',
-    event_date: '2026-11-29',
-    start_time: '17:30:00',
-    end_time: '20:30:00',
-    venue: 'Cochin Sports Arena, Edappally, Kochi',
-    registration_fee: 250,
-    created_at: '2026-11-22T07:45:00+05:30',
-  },
-  {
-    id: 'reg-demo-007',
-    registration_number: 'NS-007',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Rahul Nair',
-    phone: '9876543210',
-    skill_level: 'Advanced',
-    payment_status: 'verified',
-    attendance_status: 'present',
-    registration_status: 'confirmed',
-    event_title: 'Sunday Evening Match Session - Smash Arena',
-    event_date: '2026-11-29',
-    start_time: '17:30:00',
-    end_time: '20:30:00',
-    venue: 'Cochin Sports Arena, Edappally, Kochi',
-    registration_fee: 250,
-    created_at: '2026-11-23T10:00:00+05:30',
-  }
-];
+const DEFAULT_SEED_TICKETS: any[] = [];
 
 // Fallback in-memory store
 const memoryStore = new Map<string, any>();
-memoryStore.set('all_registrations', [...DEFAULT_SEED_TICKETS]);
-for (const t of DEFAULT_SEED_TICKETS) {
-  memoryStore.set(`phone_${t.phone}`, [t]);
-  memoryStore.set(`reg_${t.registration_number}`, t);
-}
+memoryStore.set('all_registrations', []);
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -454,8 +347,10 @@ export default async function handler(req: Request) {
           if (regId) await supabase.from('registrations').delete().eq('id', regId);
           else if (regNumber) await supabase.from('registrations').delete().eq('registration_number', regNumber);
           else if (eventId && eventId !== 'all') await supabase.from('registrations').delete().eq('event_id', eventId);
-          else if (clearAll || eventId === 'all') await supabase.from('registrations').delete().neq('id', '0');
-        } catch {}
+          else if (clearAll || eventId === 'all') await supabase.from('registrations').delete().not('id', 'is', null);
+        } catch (e) {
+          console.warn('Supabase delete error:', e);
+        }
       }
 
       return new Response(JSON.stringify({ success: true, message: 'Registrations updated in cloud store.' }), {

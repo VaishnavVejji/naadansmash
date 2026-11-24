@@ -1190,7 +1190,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                       <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                         <tr>
                           <th className="py-3 px-4">Ticket ID</th>
-                          <th className="py-3 px-4">Participant Details</th>
+                          <th className="py-3 px-4">Player Details (Name & Phone)</th>
                           <th className="py-3 px-4">Payment Proof</th>
                           <th className="py-3 px-4">12-Digit UTR</th>
                           <th className="py-3 px-4">Status</th>

@@ -114,77 +114,7 @@ function saveStoredEvents(events: DatabaseEvent[]) {
   }
 }
 
-const DEFAULT_TEST_REGISTRATIONS: any[] = [
-  {
-    id: 'reg-demo-001',
-    registration_number: 'NS-001',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Test Verification Player',
-    email: 'player.verify@naadansmash.com',
-    phone: '9998887776',
-    age: 26,
-    gender: 'Male',
-    skill_level: 'Intermediate',
-    playing_category: 'Open Doubles',
-    utr_reference: 'TEST12345678',
-    payment_status: 'pending',
-    registration_status: 'payment_submitted',
-    attendance_status: 'registered',
-    created_at: '2026-11-22T10:45:00+05:30',
-  },
-  {
-    id: 'reg-demo-002',
-    registration_number: 'NS-002',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Rahul Varma',
-    email: 'rahul.varma@example.com',
-    phone: '9847123456',
-    age: 28,
-    gender: 'Male',
-    skill_level: 'Advanced',
-    playing_category: 'Open Doubles',
-    utr_reference: 'UPI9847123456',
-    payment_status: 'verified',
-    registration_status: 'confirmed',
-    attendance_status: 'present',
-    created_at: '2026-11-22T09:30:00+05:30',
-  },
-  {
-    id: 'reg-demo-003',
-    registration_number: 'NS-003',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Anjali Menon',
-    email: 'anjali.menon@example.com',
-    phone: '9447654321',
-    age: 24,
-    gender: 'Female',
-    skill_level: 'Beginner',
-    playing_category: 'Open Doubles',
-    utr_reference: null,
-    payment_status: 'pending',
-    registration_status: 'received',
-    attendance_status: 'registered',
-    created_at: '2026-11-22T08:15:00+05:30',
-  },
-  {
-    id: 'reg-demo-004',
-    registration_number: 'NS-004',
-    event_id: '22222222-2222-2222-2222-222222222222',
-    full_name: 'Kiran Thomas',
-    email: 'kiran.thomas@example.com',
-    phone: '9846112233',
-    age: 27,
-    gender: 'Male',
-    skill_level: 'Intermediate',
-    playing_category: 'Open Doubles',
-    utr_reference: 'INVALIDUTR123',
-    payment_status: 'rejected',
-    registration_status: 'rejected',
-    rejection_reason: '12-digit UTR reference was not found in bank credits. Please check and submit correct reference.',
-    attendance_status: 'registered',
-    created_at: '2026-11-22T07:45:00+05:30',
-  },
-];
+
 
 const OLD_DEMO_TICKETS: Record<string, string> = {
   'NS-2611-24EB29': 'NS-001',
@@ -263,10 +193,10 @@ export function getRawSupabaseReg(formattedNum: string): string | null {
 }
 
 /**
- * Generates the next sequential registration number in NS-00X format (e.g. NS-005, NS-006, ...).
+ * Generates the next sequential registration number in NS-00X format (e.g. NS-001, NS-002, ...).
  */
 export function generateTicketNumber(): string {
-  let maxNum = 4; // Seed registrations are NS-001 to NS-004
+  let maxNum = 0; // Starts from 0 so fresh sessions begin at NS-001
 
   try {
     const stored = localStorage.getItem(STORAGE_KEY_REGISTRATIONS);
@@ -288,7 +218,7 @@ export function generateTicketNumber(): string {
   try {
     const savedTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
     for (const item of savedTickets) {
-      const num = item.regNumber || '';
+      const num = item.regNumber || item.registration_number || '';
       const match = num.match(/^NS-0*(\d+)$/i);
       if (match) {
         const val = parseInt(match[1], 10);
@@ -311,30 +241,20 @@ export function generateTicketNumber(): string {
 }
 
 function getStoredRegistrations(): any[] {
-  const map = new Map<string, any>();
-  for (const r of DEFAULT_TEST_REGISTRATIONS) {
-    const formatted = formatDisplayTicketNumber(r.registration_number);
-    map.set(formatted, { ...r, registration_number: formatted });
-  }
-
   try {
     const raw = localStorage.getItem(STORAGE_KEY_REGISTRATIONS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        for (const p of parsed) {
-          if (p && p.registration_number) {
-            const formatted = formatDisplayTicketNumber(p.registration_number);
-            const item = { ...p, registration_number: formatted };
-            const existing = map.get(formatted);
-            map.set(formatted, existing ? { ...existing, ...item } : item);
-          }
-        }
+        return parsed.map((p) => ({
+          ...p,
+          registration_number: formatDisplayTicketNumber(p.registration_number),
+        }));
       }
     }
   } catch {}
 
-  return Array.from(map.values());
+  return [];
 }
 
 function saveStoredRegistrations(regs: any[]) {
@@ -737,31 +657,8 @@ export const eventsService = {
     }
 
     // Check duplicate phone (one registration per phone number per event session) across all devices
+    // Each registration receives a brand-new registration ID (NS-001, NS-002, etc.)
     const storedRegs = getStoredRegistrations();
-    let isDuplicate = storedRegs.some(
-      (r: any) =>
-        r.event_id === payload.eventId &&
-        r.phone?.replace(/[^0-9]/g, '').slice(-10) === cleanPhone.slice(-10) &&
-        r.payment_status !== 'rejected'
-    );
-
-    if (!isDuplicate) {
-      try {
-        const cloudTickets = await this.getUserTickets(cleanPhone);
-        isDuplicate = cloudTickets.some(
-          (t: any) =>
-            t.event_id === payload.eventId &&
-            t.payment_status !== 'rejected'
-        );
-      } catch {}
-    }
-
-    if (isDuplicate) {
-      return {
-        success: false,
-        message: 'A registration with this phone number already exists for this session. Check "My Tickets" to view your pass.',
-      };
-    }
 
     // Check capacity
     const activeCount = storedRegs.filter(
@@ -1846,15 +1743,17 @@ export const eventsService = {
     if (isSupabaseConfigured && supabase) {
       try {
         let query = supabase.from('registrations').select('*').order('created_at', { ascending: false });
-        if (eventId) {
+        if (eventId && eventId !== 'all') {
           query = query.eq('event_id', eventId);
         }
         const { data, error } = await query;
-        if (!error && data && data.length > 0) {
-          return data.map((r: any) => ({
+        if (!error && Array.isArray(data)) {
+          const mapped = data.map((r: any) => ({
             ...r,
             registration_number: formatDisplayTicketNumber(r.registration_number),
           }));
+          saveStoredRegistrations(mapped);
+          return mapped;
         }
       } catch (e) {
         console.warn('Supabase getEventRegistrations query error', e);
@@ -2183,8 +2082,13 @@ export const eventsService = {
   async clearEventRegistrations(eventId: string): Promise<boolean> {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('registrations').delete().eq('event_id', eventId);
-        if (error) console.warn('Supabase clear event registrations error:', error);
+        if (!eventId || eventId === 'all') {
+          const { error } = await supabase.from('registrations').delete().not('id', 'is', null);
+          if (error) console.warn('Supabase clear all registrations error:', error);
+        } else {
+          const { error } = await supabase.from('registrations').delete().eq('event_id', eventId);
+          if (error) console.warn('Supabase clear event registrations error:', error);
+        }
       } catch (e) {
         console.warn('Supabase clear exception:', e);
       }
@@ -2192,9 +2096,11 @@ export const eventsService = {
 
     try {
       saveStoredRegistrations([]);
+      localStorage.setItem('naadansmash_roster_cleared', 'true');
+      localStorage.removeItem('naadansmash_ticket_format_map');
 
       const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
-      const filteredTickets = myTickets.filter((t: any) => t.eventId !== eventId);
+      const filteredTickets = !eventId || eventId === 'all' ? [] : myTickets.filter((t: any) => t.eventId !== eventId);
       localStorage.setItem('naadansmash_my_tickets', JSON.stringify(filteredTickets));
 
       // Sync clear to cloud store
