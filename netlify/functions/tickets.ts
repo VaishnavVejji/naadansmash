@@ -37,7 +37,7 @@ const CORS_HEADERS = {
 function formatTicket(t: any): any {
   return {
     ...t,
-    registration_number: t.registration_number ? t.registration_number.toUpperCase() : 'NS-001',
+    registration_number: t.registration_number ? t.registration_number.toUpperCase() : '',
     phone: (t.phone || '').replace(/\D/g, '').slice(-10),
     event_title: t.event_title || 'Sunday Evening Match Session - Smash Arena',
     event_date: t.event_date || '2026-11-29',
@@ -142,7 +142,7 @@ export default async function handler(req: Request) {
               sQuery = sQuery.eq('event_id', eventIdFilter);
             }
             const { data, error } = await sQuery;
-            if (!error && Array.isArray(data) && data.length > 0) {
+            if (!error && Array.isArray(data)) {
               const formatted = data.map(formatTicket);
               return new Response(JSON.stringify({ success: true, count: formatted.length, tickets: formatted }), {
                 status: 200,

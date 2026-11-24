@@ -240,16 +240,31 @@ export function generateTicketNumber(): string {
   return `NS-${String(nextVal).padStart(3, '0')}`;
 }
 
+const DUMMY_PHONES = new Set(['9998887776', '9847123456', '9447654321', '9846112233', '9876543210']);
+
+export function isValidParticipant(p: any): boolean {
+  if (!p) return false;
+  const name = (p.full_name || '').trim();
+  const phone = (p.phone || '').replace(/\D/g, '').slice(-10);
+  // Stale seed entry without player name
+  if (!name && DUMMY_PHONES.has(phone)) return false;
+  // Incomplete record with neither name nor valid phone
+  if (!name && phone.length < 10) return false;
+  return true;
+}
+
 function getStoredRegistrations(): any[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_REGISTRATIONS);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.map((p) => ({
-          ...p,
-          registration_number: formatDisplayTicketNumber(p.registration_number),
-        }));
+        return parsed
+          .filter(isValidParticipant)
+          .map((p) => ({
+            ...p,
+            registration_number: formatDisplayTicketNumber(p.registration_number),
+          }));
       }
     }
   } catch {}
@@ -535,24 +550,12 @@ export const eventsService = {
         });
 
         if (error) {
-          // If Supabase RPC is not yet migrated in the database, fall through to atomic local fallback
-          if (error.code === 'PGRST202' || error.message?.includes('schema cache') || error.code === 'PGRST205') {
-            console.warn('Supabase RPC register_for_event not found in schema cache. Executing local transaction fallback.');
-          } else {
-            return {
-              success: false,
-              message: error.message || 'Registration transaction failed in Supabase.',
-            };
-          }
+          console.warn('Supabase RPC register_for_event error, executing direct insert fallback:', error);
         } else if (data && typeof data === 'object') {
           if (!data.success) {
-            return {
-              success: false,
-              message: data.message || 'Registration failed validation.',
-            };
-          }
-
-          const displayRegNumber = formatDisplayTicketNumber(data.registration_number);
+            console.warn('Supabase RPC returned error status, attempting direct insert fallback:', data);
+          } else {
+            const displayRegNumber = formatDisplayTicketNumber(data.registration_number);
 
           const newPlayerRecord: any = {
             id: data.id || `reg-${Date.now()}`,
@@ -625,11 +628,12 @@ export const eventsService = {
             emailResult,
           };
         }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Database registration failed';
-        console.warn('Supabase register_for_event failed, falling back', msg);
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Database registration failed';
+      console.warn('Supabase register_for_event failed, falling back', msg);
     }
+  }
 
     // 2. Atomic fallback transaction in local storage
     const events = getStoredEvents();
@@ -1755,11 +1759,13 @@ export const eventsService = {
           query = query.eq('event_id', eventId);
         }
         const { data, error } = await query;
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const mapped = data.map((r: any) => ({
-            ...r,
-            registration_number: formatDisplayTicketNumber(r.registration_number),
-          }));
+        if (!error && Array.isArray(data)) {
+          const mapped = data
+            .filter(isValidParticipant)
+            .map((r: any) => ({
+              ...r,
+              registration_number: formatDisplayTicketNumber(r.registration_number),
+            }));
           saveStoredRegistrations(mapped);
           return mapped;
         }
@@ -1776,10 +1782,12 @@ export const eventsService = {
         const data = await res.json();
         const list = data.tickets || data.registrations;
         if (Array.isArray(list)) {
-          const mapped = list.map((r: any) => ({
-            ...r,
-            registration_number: formatDisplayTicketNumber(r.registration_number),
-          }));
+          const mapped = list
+            .filter(isValidParticipant)
+            .map((r: any) => ({
+              ...r,
+              registration_number: formatDisplayTicketNumber(r.registration_number),
+            }));
           saveStoredRegistrations(mapped);
           return mapped;
         }
@@ -1788,11 +1796,8 @@ export const eventsService = {
       console.warn('Cloud tickets fetch error:', e);
     }
 
-    const localList = getStoredRegistrations().map((r: any) => ({
-      ...r,
-      registration_number: formatDisplayTicketNumber(r.registration_number),
-    }));
-    if (eventId) {
+    const localList = getStoredRegistrations();
+    if (eventId && eventId !== 'all') {
       return localList.filter((r: any) => r.event_id === eventId);
     }
     return localList;
@@ -2124,12 +2129,11 @@ export const eventsService = {
 
     try {
       saveStoredRegistrations([]);
-      localStorage.setItem('naadansmash_roster_cleared', 'true');
+      localStorage.removeItem(STORAGE_KEY_REGISTRATIONS);
+      localStorage.removeItem('naadansmash_registrations');
+      localStorage.removeItem('naadansmash_my_tickets');
       localStorage.removeItem('naadansmash_ticket_format_map');
-
-      const myTickets = JSON.parse(localStorage.getItem('naadansmash_my_tickets') || '[]');
-      const filteredTickets = !eventId || eventId === 'all' ? [] : myTickets.filter((t: any) => t.eventId !== eventId);
-      localStorage.setItem('naadansmash_my_tickets', JSON.stringify(filteredTickets));
+      localStorage.setItem('naadansmash_roster_cleared', 'true');
 
       // Sync clear to cloud store
       await fetch(`/api/tickets?eventId=${encodeURIComponent(eventId)}&clearAll=true`, {

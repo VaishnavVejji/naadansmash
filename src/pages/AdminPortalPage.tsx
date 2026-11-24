@@ -440,6 +440,13 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     if (!confirmClear) return;
 
     try {
+      try {
+        localStorage.removeItem('naadansmash_registrations_v2');
+        localStorage.removeItem('naadansmash_registrations');
+        localStorage.removeItem('naadansmash_my_tickets');
+        localStorage.removeItem('naadansmash_ticket_format_map');
+      } catch {}
+
       const ok = await eventsService.clearEventRegistrations(targetId);
       if (ok) {
         setRegistrations([]);
@@ -700,8 +707,20 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     }
   };
 
+  const DUMMY_SEED_PHONES = new Set(['9998887776', '9847123456', '9447654321', '9846112233', '9876543210']);
+
+  // Filter out any corrupted or nameless test registrations
+  const validRegistrations = registrations.filter((r) => {
+    if (!r) return false;
+    const name = (r.full_name || '').trim();
+    const phone = (r.phone || '').replace(/\D/g, '').slice(-10);
+    if (!name && DUMMY_SEED_PHONES.has(phone)) return false;
+    if (!name && phone.length < 10) return false;
+    return true;
+  });
+
   // Filter registrations by search query and payment filter
-  const filteredRegistrations = registrations.filter((r) => {
+  const filteredRegistrations = validRegistrations.filter((r) => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       !searchTerm ||
@@ -725,10 +744,10 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     return true;
   });
 
-  const presentCount = registrations.filter((r) => r.attendance_status === 'present').length;
-  const verifiedCount = registrations.filter((r) => r.payment_status === 'verified').length;
-  const pendingCount = registrations.filter((r) => r.payment_status === 'submitted' || r.payment_status === 'pending').length;
-  const rejectedCount = registrations.filter((r) => r.payment_status === 'rejected').length;
+  const presentCount = validRegistrations.filter((r) => r.attendance_status === 'present').length;
+  const verifiedCount = validRegistrations.filter((r) => r.payment_status === 'verified').length;
+  const pendingCount = validRegistrations.filter((r) => r.payment_status === 'submitted' || r.payment_status === 'pending').length;
+  const rejectedCount = validRegistrations.filter((r) => r.payment_status === 'rejected').length;
   const activeEvent = allEvents.find((e) => e.id === selectedEventId);
 
   // Return to public participant website handler
@@ -1151,7 +1170,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                         ? `Verified (${verifiedCount})`
                         : f === 'rejected'
                         ? `Rejected (${rejectedCount})`
-                        : `All (${registrations.length})`}
+                        : `All (${validRegistrations.length})`}
                     </button>
                   ))}
                   <button
