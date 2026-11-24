@@ -736,6 +736,33 @@ export const eventsService = {
     storedRegs.push(newReg);
     localStorage.setItem(STORAGE_KEY_REGISTRATIONS, JSON.stringify(storedRegs));
 
+    // Direct insert to Supabase database so all registrations reflect immediately in Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: supaErr } = await supabase.from('registrations').insert({
+          registration_number: regNumber,
+          event_id: payload.eventId,
+          full_name: payload.fullName,
+          email: payload.email || null,
+          phone: cleanPhone,
+          age: payload.age || null,
+          gender: payload.gender || null,
+          skill_level: payload.skillLevel,
+          playing_category: payload.playingCategory || 'Open Doubles',
+          emergency_contact: payload.emergencyContact || null,
+          payment_status: 'pending',
+          attendance_status: 'registered',
+          registration_status: registrationStatus,
+          utr_reference: payload.utrReference || null,
+          payment_screenshot_path: payload.paymentScreenshotPath || null,
+          created_at: new Date().toISOString(),
+        });
+        if (supaErr) console.warn('Supabase direct insert error:', supaErr);
+      } catch (e) {
+        console.warn('Supabase direct insert exception:', e);
+      }
+    }
+
     // Auto-sync ticket to cross-device cloud store
     await this.recordPlayerTicket(regNumber, payload.phone, payload.eventId, newReg);
 
@@ -1720,7 +1747,28 @@ export const eventsService = {
    * Fetches all registered players for attendance and payment verification.
    */
   async getEventRegistrations(eventId?: string): Promise<any[]> {
-    // 1. Primary: Fetch from universal cloud store (/api/tickets)
+    // 1. Primary: Direct query from Supabase database
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase.from('registrations').select('*').order('created_at', { ascending: false });
+        if (eventId && eventId !== 'all') {
+          query = query.eq('event_id', eventId);
+        }
+        const { data, error } = await query;
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((r: any) => ({
+            ...r,
+            registration_number: formatDisplayTicketNumber(r.registration_number),
+          }));
+          saveStoredRegistrations(mapped);
+          return mapped;
+        }
+      } catch (e) {
+        console.warn('Supabase getEventRegistrations query error', e);
+      }
+    }
+
+    // 2. Universal cloud store fallback (/api/tickets)
     try {
       const queryParam = eventId ? `?eventId=${encodeURIComponent(eventId)}&t=${Date.now()}` : `?t=${Date.now()}`;
       const res = await fetch(`/api/tickets${queryParam}`, { cache: 'no-store' });
@@ -1738,26 +1786,6 @@ export const eventsService = {
       }
     } catch (e) {
       console.warn('Cloud tickets fetch error:', e);
-    }
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        let query = supabase.from('registrations').select('*').order('created_at', { ascending: false });
-        if (eventId && eventId !== 'all') {
-          query = query.eq('event_id', eventId);
-        }
-        const { data, error } = await query;
-        if (!error && Array.isArray(data)) {
-          const mapped = data.map((r: any) => ({
-            ...r,
-            registration_number: formatDisplayTicketNumber(r.registration_number),
-          }));
-          saveStoredRegistrations(mapped);
-          return mapped;
-        }
-      } catch (e) {
-        console.warn('Supabase getEventRegistrations query error', e);
-      }
     }
 
     const localList = getStoredRegistrations().map((r: any) => ({

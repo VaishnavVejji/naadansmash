@@ -137,7 +137,28 @@ export default async function handler(req: Request) {
       const cloudTickets = await fetchCloudTickets();
 
       if (!q) {
-        // Return all registered tickets from cloud store
+        // 1. Primary: Direct query from Supabase database
+        if (supabase) {
+          try {
+            let sQuery = supabase.from('registrations').select('*').order('created_at', { ascending: false });
+            const eventIdFilter = url.searchParams.get('eventId');
+            if (eventIdFilter && eventIdFilter !== 'all') {
+              sQuery = sQuery.eq('event_id', eventIdFilter);
+            }
+            const { data, error } = await sQuery;
+            if (!error && Array.isArray(data) && data.length > 0) {
+              const formatted = data.map(formatTicket);
+              return new Response(JSON.stringify({ success: true, count: formatted.length, tickets: formatted }), {
+                status: 200,
+                headers: CORS_HEADERS,
+              });
+            }
+          } catch (e) {
+            console.warn('Supabase fetch error in tickets API:', e);
+          }
+        }
+
+        // 2. Return registered tickets from cloud store
         const listToReturn = Array.isArray(cloudTickets) ? cloudTickets.map(formatTicket) : [];
 
         const eventIdFilter = url.searchParams.get('eventId');
