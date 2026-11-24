@@ -224,19 +224,17 @@ export default async function handler(req: Request) {
       const cloudTickets = await fetchCloudTickets();
 
       if (!q) {
-        // Return all registered tickets
-        const mergedMap = new Map<string, any>();
-        for (const seed of DEFAULT_SEED_TICKETS) {
-          mergedMap.set(seed.registration_number.toUpperCase(), formatTicket(seed));
-        }
-        for (const item of cloudTickets) {
-          if (item && item.registration_number) {
-            mergedMap.set(item.registration_number.toUpperCase(), formatTicket(item));
-          }
+        // Return all registered tickets from cloud store
+        let listToReturn = cloudTickets && cloudTickets.length > 0
+          ? cloudTickets.map(formatTicket)
+          : DEFAULT_SEED_TICKETS.map(formatTicket);
+
+        const eventIdFilter = url.searchParams.get('eventId');
+        if (eventIdFilter) {
+          listToReturn = listToReturn.filter((t: any) => t.event_id === eventIdFilter);
         }
 
-        const mergedList = Array.from(mergedMap.values());
-        return new Response(JSON.stringify({ success: true, count: mergedList.length, tickets: mergedList }), {
+        return new Response(JSON.stringify({ success: true, count: listToReturn.length, tickets: listToReturn }), {
           status: 200,
           headers: CORS_HEADERS,
         });

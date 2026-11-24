@@ -370,7 +370,7 @@ export const eventsService = {
             status: item.status,
             created_at: item.created_at,
             available_slots: item.available_slots ?? Number(item.max_participants || 24),
-            isHistorical: item.status === 'completed' || item.event_date <= '2026-11-22',
+            isHistorical: item.isHistorical === true || (item.event_date ? item.event_date < '2026-11-23' : false),
           }));
 
           saveStoredEvents(mapped);
@@ -421,7 +421,7 @@ export const eventsService = {
                 status: item.status,
                 created_at: item.created_at,
                 available_slots: availableSlots,
-                isHistorical: item.status === 'completed' || item.event_date <= '2026-11-22',
+                isHistorical: item.isHistorical === true || (item.event_date ? item.event_date < '2026-11-23' : false),
               };
             })
           );

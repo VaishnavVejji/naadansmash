@@ -59,7 +59,7 @@ export const Events: React.FC<EventsProps> = ({
   };
 
   const upcomingEvents = events.filter(
-    (e) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.event_date >= '2026-11-22')
+    (e) => !e.isHistorical && (e.status === 'published' || e.status === 'closed' || e.status === 'completed' || e.event_date >= '2026-11-23')
   );
 
   const inProgressEvent = events.find(

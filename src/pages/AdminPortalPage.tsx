@@ -128,6 +128,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   } | null>(null);
   const [rejectionReasonInput, setRejectionReasonInput] = useState('12-digit UTR reference was not found in bank credits.');
   const [rejectionSubmitting, setRejectionSubmitting] = useState(false);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   const populateEventForm = useCallback(async (evt: DatabaseEvent) => {
     setTitle(evt.title);
@@ -187,38 +188,107 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
     initList();
   }, [populateEventForm]);
 
-  const loadRoster = useCallback(async (evId: string) => {
+  const loadRoster = useCallback(async (evId: string, isSilent = false) => {
     if (!evId) return;
-    setRosterLoading(true);
+    if (!isSilent) setRosterLoading(true);
     try {
       const data = await eventsService.getEventRegistrations(evId);
       setRegistrations(data);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load roster:', e);
     } finally {
-      setRosterLoading(false);
+      if (!isSilent) setRosterLoading(false);
     }
   }, []);
 
+  const syncAllFromCloud = useCallback(async (isBackground = false) => {
+    if (!isBackground) setIsSyncingCloud(true);
+    try {
+      // 1. Refresh events from cloud store
+      const list = await eventsService.getEvents();
+      if (list && list.length > 0) {
+        setAllEvents(list);
+        const currentTargetId = selectedEventId || list.find((e) => e.status === 'published')?.id || list[0].id;
+        const targetEv = list.find((e) => e.id === currentTargetId) || list[0];
+
+        if (targetEv) {
+          if (!selectedEventId) {
+            setSelectedEventId(targetEv.id);
+          }
+          // Only sync form state if user isn't in the middle of creating a brand new event
+          if (!isCreatingNewEvent && !savingEvent) {
+            setTitle(targetEv.title);
+            setEventDate(targetEv.event_date);
+            setStartTime(targetEv.start_time.slice(0, 5));
+            setEndTime(targetEv.end_time.slice(0, 5));
+            setVenue(targetEv.venue);
+            setFee(targetEv.registration_fee);
+            setMaxParticipants(targetEv.max_participants);
+            setStatus(targetEv.status);
+            setDescription(targetEv.description || '');
+          }
+        }
+      }
+
+      // 2. Refresh payment settings
+      try {
+        const pSettings = await eventsService.getPaymentSettings();
+        if (pSettings?.upi_id) {
+          setUpiId(pSettings.upi_id);
+          setAccountName(pSettings.account_display_name);
+        }
+      } catch {}
+
+      // 3. Refresh registrations roster
+      const targetId = selectedEventId || list?.[0]?.id;
+      if (targetId) {
+        await loadRoster(targetId, isBackground);
+      }
+
+      if (!isBackground) {
+        setFeedbackBanner({
+          message: '✓ Cloud synchronized: Event session, payment settings, and player roster are up to date.',
+          type: 'success',
+        });
+        setTimeout(() => setFeedbackBanner(null), 3500);
+      }
+    } catch (err) {
+      console.warn('Sync all from cloud error:', err);
+    } finally {
+      if (!isBackground) setIsSyncingCloud(false);
+    }
+  }, [selectedEventId, isCreatingNewEvent, savingEvent, loadRoster]);
+
   useEffect(() => {
-    if (session && selectedEventId) {
-      loadRoster(selectedEventId);
-      // Live cross-device sync: poll roster every 8 seconds
+    if (session) {
+      syncAllFromCloud(false);
+      // Live cross-device sync: poll every 7 seconds
       const pollTimer = setInterval(() => {
-        loadRoster(selectedEventId);
-      }, 8000);
+        syncAllFromCloud(true);
+      }, 7000);
       const handleVisChange = () => {
         if (document.visibilityState === 'visible') {
-          loadRoster(selectedEventId);
+          syncAllFromCloud(true);
         }
       };
+      const handleSyncEvent = () => {
+        syncAllFromCloud(true);
+      };
+
       document.addEventListener('visibilitychange', handleVisChange);
+      window.addEventListener('naadansmash_event_updated', handleSyncEvent);
+      window.addEventListener('naadansmash_payment_updated', handleSyncEvent);
+      window.addEventListener('naadansmash_roster_updated', handleSyncEvent);
+
       return () => {
         clearInterval(pollTimer);
         document.removeEventListener('visibilitychange', handleVisChange);
+        window.removeEventListener('naadansmash_event_updated', handleSyncEvent);
+        window.removeEventListener('naadansmash_payment_updated', handleSyncEvent);
+        window.removeEventListener('naadansmash_roster_updated', handleSyncEvent);
       };
     }
-  }, [session, selectedEventId, loadRoster]);
+  }, [session, selectedEventId, syncAllFromCloud]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,19 +311,8 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
       setPassword('');
       setAuthError('');
 
-      // Refresh events from cloud immediately upon login
-      try {
-        eventsService.getEvents().then((freshEvents) => {
-          if (freshEvents && freshEvents.length > 0) {
-            setAllEvents(freshEvents);
-            const active = freshEvents.find((e) => e.status === 'published') || freshEvents[0];
-            if (active) {
-              setSelectedEventId(active.id);
-              populateEventForm(active);
-            }
-          }
-        });
-      } catch {}
+      // Refresh all data from cloud immediately upon login
+      syncAllFromCloud(false);
     } else {
       setAuthError(res.message);
     }
@@ -871,9 +930,11 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
                 <select
                   value={selectedEventId}
                   onChange={(e) => {
-                    setSelectedEventId(e.target.value);
-                    const ev = allEvents.find((evt) => evt.id === e.target.value);
+                    const newId = e.target.value;
+                    setSelectedEventId(newId);
+                    const ev = allEvents.find((evt) => evt.id === newId);
                     if (ev) populateEventForm(ev);
+                    loadRoster(newId, false);
                   }}
                   className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:border-brand-teal outline-none"
                 >
@@ -887,13 +948,13 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => loadRoster(selectedEventId)}
-                  disabled={rosterLoading}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono transition-colors flex items-center gap-1.5 border border-slate-700"
-                  title="Reload registrations from cloud database"
+                  onClick={() => syncAllFromCloud(false)}
+                  disabled={isSyncingCloud || rosterLoading}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono transition-colors flex items-center gap-1.5 border border-slate-700 active:scale-95"
+                  title="Reload event schedule, payment settings, and registrations from cloud database"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${rosterLoading ? 'animate-spin' : ''}`} />
-                  <span>Sync Cloud</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud || rosterLoading ? 'animate-spin text-brand-teal' : ''}`} />
+                  <span>{isSyncingCloud ? 'Syncing...' : 'Sync Cloud'}</span>
                 </button>
                 <button
                   onClick={handleExportCSV}
